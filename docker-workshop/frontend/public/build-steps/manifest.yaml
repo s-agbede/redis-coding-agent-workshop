@@ -1,0 +1,15 @@
+steps:
+  - file: 01-first-call.md
+    title: Make your first model call
+  - file: 02-peas.md
+    title: Design the agent with PEAS
+  - file: 03-conversation.md
+    title: Keep the conversation
+  - file: 04-one-tool.md
+    title: Give the model a file reader
+  - file: 05-better-tools.md
+    title: Make the reader useful on larger files
+  - file: 06-agent-loop.md
+    title: Let the agent take several steps
+  - file: 07-capstone.md
+    title: Ask your agent to fix the app

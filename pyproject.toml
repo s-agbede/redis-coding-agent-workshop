@@ -1,0 +1,18 @@
+[project]
+name = "minimal-coding-agent"
+version = "0.1.0"
+description = "A minimal coding agent — workshop teaching artifact"
+requires-python = ">=3.10"
+dependencies = [
+    "openai>=1.0",
+    "rich>=13.0",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "python-dotenv>=1.2.2",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

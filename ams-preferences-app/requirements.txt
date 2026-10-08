@@ -1,0 +1,4 @@
+agent-memory-client
+python-dotenv
+httpx
+rich

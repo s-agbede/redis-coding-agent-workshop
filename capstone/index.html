@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Task board · Coding agent workshop</title>
+  <style>
+    :root { color-scheme: light; font-family: ui-sans-serif, system-ui, sans-serif; color: #182c2a; background: #f4f4ec; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 40px 24px; }
+    main { max-width: 760px; margin: 5vh auto; }
+    .eyebrow { color: #61746a; font-size: 12px; font-weight: 750; letter-spacing: .13em; text-transform: uppercase; }
+    header { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin: 24px 0; }
+    h1 { margin: 0 0 12px; font-size: clamp(36px, 6vw, 54px); letter-spacing: -.045em; font-weight: 650; }
+    p { line-height: 1.55; }
+    .intro { margin: 0; color: #61746a; max-width: 490px; }
+    .badge { border: 1px solid #c5d3c3; border-radius: 99px; padding: 8px 12px; font-size: 12px; white-space: nowrap; }
+    .board { background: #fff; border: 1px solid #dce2d7; border-radius: 20px; overflow: hidden; box-shadow: 0 12px 40px #203c2b08; }
+    form { display: flex; gap: 10px; padding: 24px; border-bottom: 1px solid #e7ebe3; }
+    input[type=text] { width: 100%; border: 1px solid #c8d3c7; border-radius: 9px; padding: 13px 14px; font: inherit; min-width: 0; }
+    button { border: 0; border-radius: 9px; background: #205c49; color: #fff; padding: 12px 18px; font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    button:hover { background: #164533; }
+    button:disabled { opacity: .55; cursor: wait; }
+    :focus-visible { outline: 3px solid #d09e29; outline-offset: 3px; }
+    .list-heading { padding: 20px 24px 4px; display: flex; justify-content: space-between; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #667468; }
+    ul { list-style: none; margin: 0; padding: 0 24px 14px; }
+    li { display: flex; align-items: center; gap: 14px; padding: 18px 0; border-bottom: 1px solid #edf0e9; }
+    li:last-child { border-bottom: 0; }
+    label.task { display: flex; align-items: center; gap: 14px; flex: 1; overflow-wrap: anywhere; }
+    input[type=checkbox] { accent-color: #205c49; width: 20px; height: 20px; flex-shrink: 0; cursor: pointer; }
+    .done .task-title { color: #859184; text-decoration: line-through; }
+    .delete { background: transparent; color: #6b776a; padding: 6px 10px; font-size: 13px; font-weight: 500; }
+    .delete:hover { color: #9e3c2c; background: #fcf0ed; }
+    .empty { padding: 34px 20px 45px; text-align: center; color: #7a8778; }
+    .empty strong { display: block; color: #415741; margin-bottom: 7px; }
+    #status { min-height: 24px; margin: 14px 4px; color: #61746a; font-size: 13px; }
+    #status.error { color: #a03523; }
+    footer { display: flex; justify-content: space-between; gap: 24px; border-top: 1px solid #d8dfd0; padding-top: 20px; margin-top: 40px; font-size: 12px; color: #75806f; }
+    @media (max-width: 520px) { body { padding: 24px 16px; } main { margin: 2vh auto; } header { align-items: start; flex-direction: column; } form { padding: 18px; } button { padding: 12px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">Coding agent workshop / Repair exercise</div>
+    <header>
+      <div><h1>A little less to do.</h1><p class="intro">Add a task. Check it off. Refresh the page.<br>Your progress should still be here.</p></div>
+      <span class="badge">Task board</span>
+    </header>
+    <section class="board" aria-label="Task board">
+      <form id="add-task">
+        <input type="text" id="title" aria-label="New task" placeholder="What needs doing?" maxlength="120" required autocomplete="off">
+        <button type="submit">Add task <span aria-hidden="true">+</span></button>
+      </form>
+      <div class="list-heading"><span>Your tasks</span><span id="count">0 remaining</span></div>
+      <ul id="tasks" aria-label="Tasks"></ul>
+      <div id="empty" class="empty"><strong>A fresh start.</strong>Add your first task above.</div>
+    </section>
+    <p id="status" role="status" aria-live="polite"></p>
+    <footer><span>Small changes. Observable results.</span><span>Tasks reset when the server restarts.</span></footer>
+  </main>
+  <script>
+    const list = document.querySelector('#tasks');
+    const form = document.querySelector('#add-task');
+    const title = document.querySelector('#title');
+    const status = document.querySelector('#status');
+    let tasks = [];
+
+    function report(message, error = false) {
+      status.textContent = message;
+      status.classList.toggle('error', error);
+    }
+
+    async function api(path, method = 'GET', body) {
+      const response = await fetch(path, {
+        method, headers: { 'Content-Type': 'application/json' },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+      if (!response.ok) throw new Error(`Request failed (${response.status}). Please try again.`);
+      return response.status === 204 ? null : response.json();
+    }
+
+    function render() {
+      list.replaceChildren();
+      document.querySelector('#empty').hidden = tasks.length > 0;
+      document.querySelector('#count').textContent = `${tasks.filter(task => !task.completed).length} remaining`;
+      for (const task of tasks) {
+        const row = document.createElement('li');
+        row.classList.toggle('done', task.completed);
+        const label = document.createElement('label');
+        label.className = 'task';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = task.completed;
+        const name = document.createElement('span');
+        name.className = 'task-title';
+        name.textContent = task.title;
+        checkbox.addEventListener('change', async () => {
+          checkbox.disabled = true;
+          try {
+            const updated = await api(`tasks/${task.id}`, 'PATCH', { completed: checkbox.checked });
+            tasks = tasks.map(item => item.id === task.id ? updated : item);
+            report(updated.completed ? 'Task completed.' : 'Task reopened.');
+          } catch (error) { report(error.message, true); }
+          render();
+        });
+        label.append(checkbox, name);
+        const remove = document.createElement('button');
+        remove.className = 'delete';
+        remove.textContent = 'Remove';
+        remove.setAttribute('aria-label', `Remove ${task.title}`);
+        remove.addEventListener('click', async () => {
+          remove.disabled = true;
+          try {
+            await api(`tasks/${task.id}`, 'DELETE');
+            tasks = tasks.filter(item => item.id !== task.id);
+            report('Task removed.');
+          } catch (error) { report(error.message, true); }
+          render();
+        });
+        row.append(label, remove);
+        list.append(row);
+      }
+    }
+
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!title.value.trim()) { title.focus(); return; }
+      const button = form.querySelector('button');
+      button.disabled = true;
+      try {
+        tasks.push(await api('tasks', 'POST', { title: title.value.trim() }));
+        title.value = '';
+        render();
+        report('Task added.');
+        title.focus();
+      } catch (error) { report(error.message, true); }
+      finally { button.disabled = false; }
+    });
+
+    api('tasks').then(data => { tasks = data; render(); })
+      .catch(error => report(error.message, true));
+  </script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+An agent receives a task and the available tool descriptions.
+The model requests a tool; Python executes it.
+The result is appended with the matching call identifier.
+Another model call can use that result to choose what to do next.
+Small excerpts leave room for other useful context.
+An explicit truncation notice tells the agent there is more to read.
+When no tools are requested, the loop returns the answer.
+An answer is a claim; verification supplies evidence.

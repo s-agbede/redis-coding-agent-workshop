@@ -1,0 +1,7 @@
+steps:
+  - file: loop.md
+    title: See the agent, then find the app bug
+  - file: tools.md
+    title: How the AI uses a tool
+  - file: verification.md
+    title: Run the tests before fixing it

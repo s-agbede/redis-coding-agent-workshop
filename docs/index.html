@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Build a Coding Agent</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script>
+      function isVscodeLinkTarget(target) {
+        if (!target) return null;
+        const element = target.nodeType === Node.ELEMENT_NODE ? target : target.parentElement;
+        return element?.closest?.('a[target="vscode"][href^="/vscode/"]') || null;
+      }
+
+      function openVscodeLink(link, event) {
+        if (!link || window.parent === window) return;
+
+        event?.preventDefault();
+        const href = link.getAttribute("href");
+        if (typeof window.parent.openWorkshopFile === "function") {
+          window.parent.openWorkshopFile(href);
+          return;
+        }
+
+        window.parent.postMessage({
+          type: "open-vscode-file",
+          href
+        }, window.location.origin);
+      }
+
+      function wireVscodeLinks() {
+        document.querySelectorAll('a[target="vscode"][href^="/vscode/"]').forEach((link) => {
+          if (link.dataset.workshopFileLink === "true") return;
+
+          link.dataset.workshopFileLink = "true";
+          link.addEventListener("click", (event) => openVscodeLink(link, event));
+        });
+      }
+
+      function docsRouteFromLink(link) {
+        const rawHref = link.getAttribute("href");
+        if (!rawHref || rawHref.startsWith("#/")) return rawHref;
+        if (link.target === "vscode") return null;
+
+        const url = new URL(rawHref, "http://workshop.local/");
+        if (url.origin !== "http://workshop.local") return null;
+        if (!url.pathname.endsWith(".md")) return null;
+
+        const currentRoute = window.location.hash.replace(/^#\/?/, "").replace(/\/$/, "");
+        const currentDir = currentRoute.includes("/")
+          ? currentRoute.slice(0, currentRoute.lastIndexOf("/") + 1)
+          : "";
+        const resolved = rawHref.startsWith("/")
+          ? new URL(rawHref, "http://workshop.local/")
+          : new URL(rawHref, `http://workshop.local/${currentDir}`);
+        const route = resolved.pathname.replace(/^\/+/, "").replace(/\.md$/, "");
+        return `#/${route}`;
+      }
+
+      function openDocsLink(link, event) {
+        const route = docsRouteFromLink(link);
+        if (!route || route === "#") return;
+
+        event?.preventDefault();
+        if (window.parent !== window && typeof window.parent.openWorkshopDocs === "function") {
+          window.parent.openWorkshopDocs(route);
+          return;
+        }
+
+        if (window.parent !== window) {
+          window.parent.postMessage({
+            type: "open-docs-route",
+            route
+          }, window.location.origin);
+          return;
+        }
+
+        window.location.hash = route;
+      }
+
+      function wireDocsLinks() {
+        document.querySelectorAll('a[href]').forEach((link) => {
+          if (link.dataset.workshopDocsLink === "true") return;
+          if (!docsRouteFromLink(link)) return;
+
+          link.dataset.workshopDocsLink = "true";
+          link.addEventListener("click", (event) => openDocsLink(link, event));
+        });
+      }
+
+      window.$docsify = {
+        name: "Build a Coding Agent",
+        repo: "",
+        loadSidebar: true,
+        subMaxLevel: 2,
+        homepage: "home.md",
+        search: "auto",
+        plugins: [
+          function(hook) {
+            hook.doneEach(function() {
+              wireVscodeLinks();
+              wireDocsLinks();
+            });
+          }
+        ]
+      };
+    </script>
+    <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
+    <script src="//cdn.jsdelivr.net/npm/docsify@4/lib/plugins/search.min.js"></script>
+    <script>
+      document.addEventListener("click", (event) => {
+        const vscodeLink = isVscodeLinkTarget(event.target);
+        if (vscodeLink) {
+          openVscodeLink(vscodeLink, event);
+          return;
+        }
+
+        const element = event.target.nodeType === Node.ELEMENT_NODE
+          ? event.target
+          : event.target.parentElement;
+        openDocsLink(element?.closest?.("a[href]"), event);
+      }, true);
+    </script>
+  </body>
+</html>

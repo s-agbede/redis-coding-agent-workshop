@@ -1,0 +1,20 @@
+version: '3.9'
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: ams-redis
+    ports:
+      - "6379:6379"
+  api:
+    image: redislabs/agent-memory-server:latest
+    container_name: ams-api
+    depends_on:
+      - redis
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - DISABLE_AUTH=true
+    command: ["agent-memory", "api", "--host", "0.0.0.0", "--port", "8000", "--task-backend", "asyncio"]
+    ports:
+      - "8000:8000"
+    restart: unless-stopped

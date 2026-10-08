@@ -1,0 +1,31 @@
+title: Build a Coding Agent
+subtitle: Build an AI helper that can read code, make changes and run tests.
+phases:
+  welcome:
+    enabled: true
+    title: Welcome
+  review:
+    enabled: false
+    title: How it works
+  demo:
+    enabled: false
+    title: Try the app
+  build:
+    enabled: true
+    title: Workshop
+demoPanel:
+  title: Student workspace
+  position: right
+  defaultWidth: 560
+  defaultTab: terminal
+  appUrl: /app/
+  appTitle: Task-list app
+  tabs:
+    - id: terminal
+      label: Terminal
+    - id: app
+      label: App Preview
+backend:
+  defaultLanguage: python
+  languages:
+    - python
