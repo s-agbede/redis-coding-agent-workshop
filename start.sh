@@ -1,5 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -euo pipefail
-
-cd /opt/app
-make run dev
+cd "$(dirname "$0")"
+docker compose up --build -d
