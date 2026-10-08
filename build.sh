@@ -1,11 +1,23 @@
 #!/usr/bin/env bash
+# Run on macOS/Linux (or Linux inside WSL): bash install-requirements.sh
+# Installs uv if missing, then installs the requirements into .venv.
+# Official installation guide: https://docs.astral.sh/uv/getting-started/installation/
+# Packages are installed into .venv beside this script.
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
 if ! command -v uv >/dev/null 2>&1; then
+    echo "Installing uv..."
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    # Make the default install location available in this same Bash session.
+    export PATH="$HOME/.local/bin:$PATH"
+    if ! command -v uv >/dev/null 2>&1; then
     echo "Error: uv is required. Install it from https://docs.astral.sh/uv/getting-started/installation/" >&2
     exit 1
+        echo "Error: uv was not found after installation. Check the installer output for its location." >&2
+        exit 1
+    fi
 fi
 
 if [[ ! -d .venv ]]; then
