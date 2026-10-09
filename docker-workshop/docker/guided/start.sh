@@ -31,7 +31,7 @@ code_pid=$!
 
 /opt/editor/.venv/bin/uvicorn app:app --app-dir /opt/editor --host 0.0.0.0 --port 8081 &
 editor_pid=$!
-ttyd -W --check-origin -p 7681 --base-path /terminal -t fontSize=13 -t disableLeaveAlert=true \
+ttyd -W -p 7681 --base-path /terminal -t fontSize=13 -t disableLeaveAlert=true \
   tmux -f /etc/tmux.conf attach-session -t workshop &
 terminal_pid=$!
 
