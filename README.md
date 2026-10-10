@@ -32,7 +32,7 @@ Open **http://localhost:8080**. Browser edits apply to `docker-workshop/student/
 
 ## Repository layout
 
-- `docker-compose.yml`, `start.sh`, `build.sh`: the single workshop deployment and its entry points. Use `bash build.sh` to build without starting services.
+- `docker-compose.yml`, `start.sh`, `build.sh`: the single workshop deployment and its entry points. The hosted lab can also invoke `bash build.sh` to build and start the workshop. Use `docker compose build` to build images only.
 - `docker-workshop/`: browser platform — frontend, workbench, runtime backend, Docker image files and attributed shared components.
 - `docker-workshop/student/`: editable learner files mounted into the browser at `/workspace`.
 - Root Python files, `checkpoints/`, `capstone/`, `solutions/`, `tests/`: separate local/CLI exercise workspace. It intentionally stays independent of student edits in the browser.
@@ -41,7 +41,7 @@ Open **http://localhost:8080**. Browser edits apply to `docker-workshop/student/
 
 To stop the workshop, run `docker compose down` from the repository root. Do not add `--volumes` unless you intend to delete saved environment/editor data.
 
-For network access behind your deployment's authentication, set `WORKSHOP_BIND_ADDRESS=0.0.0.0` in the root `.env`. The default is local-only access on port 8080.
+The default listens on all interfaces on port 8080 for the hosted lab; keep it behind the lab's authentication gateway. For local-only access, set `WORKSHOP_BIND_ADDRESS=127.0.0.1` in the root `.env`.
 
 ## Local commands
 

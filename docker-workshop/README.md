@@ -13,10 +13,10 @@ From the repository root, preserve any existing `.env`; otherwise copy `.env.exa
 bash start.sh
 ```
 
-The root `docker-compose.yml` is the only deployment configuration. `start.sh` waits for the runtime to become healthy and uses the root `.env`, falling back to an existing `docker-workshop/.env` for older installations. The wrappers in this directory delegate to the root scripts.
+The root `docker-compose.yml` is the only deployment configuration. `start.sh` waits for the runtime to become healthy and uses the root `.env`, falling back to an existing `docker-workshop/.env` for older installations. The wrappers in this directory delegate to the root scripts. The hosted lab's `build.sh` entry point builds and starts the workshop; use `docker compose build` from the root for image builds only.
 
 Open **http://localhost:8080**. `WORKSHOP_PORT` chooses another port;
-`WORKSHOP_BIND_ADDRESS` defaults to `127.0.0.1`. Each learner needs their own stack.
+`WORKSHOP_BIND_ADDRESS` defaults to `0.0.0.0` for hosted labs; use `127.0.0.1` for local-only access. Each learner needs their own stack.
 The first build downloads VS Code and the locked Python dependencies.
 
 The Instructions panel guides you through **Welcome → Workshop**. The seven lessons begin with a FizzBuzz model call and PEAS design, then add conversation history, a plain reader, improved tool output and the agent loop. The final lesson asks the learner's agent to repair and test the task board.

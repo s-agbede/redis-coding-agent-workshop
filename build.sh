@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the workshop images without starting or restarting services.
+# The hosted lab invokes this entry point to build and start the workshop.
+# For image builds only, use: docker compose build
 set -euo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")"
-exec docker compose build "$@"
+exec bash "$(dirname "${BASH_SOURCE[0]}")/start.sh" "$@"
