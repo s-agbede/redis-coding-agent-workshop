@@ -7,13 +7,13 @@ Pinned sources and local adaptations are recorded in [UPSTREAM.md](UPSTREAM.md).
 
 ## Start
 
-From this directory, copy `.env.example` to `.env` only if it does not already
-exist. Before teaching, configure the model service key and endpoint for the live exercises.
-The instructor provides access so learners can focus on the Python code.
+From the repository root, preserve any existing `.env`; otherwise copy `.env.example` to `.env` and configure `AGENT_API_KEY` and the model endpoint. Then run:
 
 ```bash
-docker compose up --build -d
+bash start.sh
 ```
+
+The root `docker-compose.yml` is the only deployment configuration. `start.sh` waits for the runtime to become healthy and uses the root `.env`, falling back to an existing `docker-workshop/.env` for older installations. The wrappers in this directory delegate to the root scripts.
 
 Open **http://localhost:8080**. `WORKSHOP_PORT` chooses another port;
 `WORKSHOP_BIND_ADDRESS` defaults to `127.0.0.1`. Each learner needs their own stack.
@@ -22,6 +22,17 @@ The first build downloads VS Code and the locked Python dependencies.
 The Instructions panel guides you through **Welcome → Workshop**. The seven lessons begin with a FizzBuzz model call and PEAS design, then add conversation history, a plain reader, improved tool output and the agent loop. The final lesson asks the learner's agent to repair and test the task board.
 
 ## Workbench panels
+
+For hosting behind an HTTPS gateway, the gateway must preserve the public `Host`
+and set `X-Forwarded-Proto` to the original browser scheme. Nginx forwards that
+scheme to the editor API so Run code can validate the browser's origin. Do not
+rewrite the API's `Origin` header or remove its same-origin check.
+
+The editor API trusts forwarded headers because port 8081 is private to the
+trusted Compose network. Do not publish that port or attach untrusted containers
+to the network. Keep the public workshop behind the lab's authentication gateway.
+After changing Nginx or the runtime startup script, save learner work and rebuild
+both services with `bash start.sh` from the repository root.
 
 | Panel | What to do there |
 | --- | --- |
@@ -62,14 +73,16 @@ fresh task after code reload before checking the repaired browser flow.
 
 ## Stop, restart and upgrade
 
+From the repository root:
+
 ```bash
 docker compose down
-docker compose up -d
+bash start.sh
 ```
 
 Saved files remain in `student/`. Stopping the runtime ends its shell processes
 and capstone server. After configuration or image changes, use
-`docker compose up --build -d`; changing `.env` requires recreating the runtime.
+`bash start.sh`; changing `.env` requires recreating the runtime.
 Never use `down --volumes` to perform a routine update.
 
 The Compose project name remains `coding-agent-guided` for upgrades. The workbench
@@ -77,6 +90,8 @@ uses a new Debian Python environment volume; the former Alpine volume is retaine
 The same student files remain in place. Restart the preview after upgrading.
 
 ## Verify and develop
+
+Run these development checks from `docker-workshop/`:
 
 ```bash
 uv run --project backend pytest backend/tests -q
@@ -101,8 +116,3 @@ interface uses code-server. Open the root URL to use lessons and Code together.
 - `docker/guided/`: VS Code, managed Python, API and ttyd/tmux runtime.
 - `student/`: learner code, tests, checkpoints, cached documentation and solutions.
 - `vendor/workshop-front-end-components/`: shared guided lesson components.
-
-The earlier Docsify workbench remains optional via
-`docker compose -p coding-agent-legacy -f docker-compose.legacy.yml up --build -d`
-at http://localhost. Avoid editing the same student files in both interfaces.
-Its historical setup is [SETUP.legacy.md](SETUP.legacy.md).

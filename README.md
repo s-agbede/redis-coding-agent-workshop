@@ -22,13 +22,26 @@ Learner functions are in `first_call.py`, `checkpoints/stage1_chat.py`, `tools.p
 
 The [Redis workshop workbench](https://github.com/redis-developer/semantic-cache-routing-workshop) combines guided Instructions, VS Code, a shared Terminal and App Preview. The navigation is **Welcome → Workshop**.
 
-Prepare the environment before teaching. From `docker-workshop/`, copy `.env.example` to `.env` only if it does not already exist, then configure `AGENT_API_KEY` and the model service. Start it with:
+From the repository root, preserve an existing `.env`; otherwise copy `.env.example` to `.env`. Configure `AGENT_API_KEY` and the model service, then run:
 
 ```bash
-docker compose up --build -d
+bash start.sh
 ```
 
 Open **http://localhost:8080**. Browser edits apply to `docker-workshop/student/`; root files are a separate local/CLI starter. See [browser setup](docker-workshop/README.md) and [upstream provenance](docker-workshop/UPSTREAM.md).
+
+## Repository layout
+
+- `docker-compose.yml`, `start.sh`, `build.sh`: the single workshop deployment and its entry points. Use `bash build.sh` to build without starting services.
+- `docker-workshop/`: browser platform — frontend, workbench, runtime backend, Docker image files and attributed shared components.
+- `docker-workshop/student/`: editable learner files mounted into the browser at `/workspace`.
+- Root Python files, `checkpoints/`, `capstone/`, `solutions/`, `tests/`: separate local/CLI exercise workspace. It intentionally stays independent of student edits in the browser.
+- `docs/tasks/`: canonical lesson text. Published copies are checked for consistency by the documentation tests. `docs/research/` and `docs/superpowers/` hold historical design records.
+- `install-requirements.sh`: optional installer for the separately supplied Redis/ML dependency list. It is not needed to build or start this workshop; workshop dependencies are declared in `pyproject.toml` files.
+
+To stop the workshop, run `docker compose down` from the repository root. Do not add `--volumes` unless you intend to delete saved environment/editor data.
+
+For network access behind your deployment's authentication, set `WORKSHOP_BIND_ADDRESS=0.0.0.0` in the root `.env`. The default is local-only access on port 8080.
 
 ## Local commands
 

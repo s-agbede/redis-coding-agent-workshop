@@ -1,20 +1,44 @@
-version: '3.9'
+name: coding-agent-guided
+
 services:
-  redis:
-    image: redis:7-alpine
-    container_name: ams-redis
+  frontend:
+    build:
+      context: ./docker-workshop
+      dockerfile: frontend/Dockerfile
     ports:
-      - "6379:6379"
-  api:
-    image: redislabs/agent-memory-server:latest
-    container_name: ams-api
+      - "${WORKSHOP_BIND_ADDRESS:-127.0.0.1}:${WORKSHOP_PORT:-8080}:80"
     depends_on:
-      - redis
-    environment:
-      - REDIS_URL=redis://redis:6379
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - DISABLE_AUTH=true
-    command: ["agent-memory", "api", "--host", "0.0.0.0", "--port", "8000", "--task-backend", "asyncio"]
-    ports:
-      - "8000:8000"
+      runtime:
+        condition: service_healthy
     restart: unless-stopped
+
+  runtime:
+    build:
+      context: ./docker-workshop
+      dockerfile: docker/guided/Dockerfile
+    volumes:
+      - ./docker-workshop/student:/workspace
+      # The previous Alpine environment cannot load Debian native extensions.
+      # Keep its volume intact; the workbench has its own reproducible environment.
+      - workbench-venv:/opt/student/.venv
+      - code-server-data:/opt/code-server
+    environment:
+      AGENT_API_KEY: ${AGENT_API_KEY:-}
+      AGENT_BASE_URL: ${AGENT_BASE_URL:-}
+      AGENT_MODEL: ${AGENT_MODEL:-gpt-5}
+      AGENT_MAX_ITERS: ${AGENT_MAX_ITERS:-25}
+      AGENT_REQUEST_TIMEOUT: ${AGENT_REQUEST_TIMEOUT:-90}
+      AGENT_AUTO_APPROVE: ${AGENT_AUTO_APPROVE:-}
+      AGENT_VERBOSE: ${AGENT_VERBOSE:-}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8081/api/health >/dev/null && curl -fsS http://localhost:7681/terminal/ >/dev/null && curl -fsS http://localhost:8080/healthz >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  student-venv:
+  workbench-venv:
+  code-server-data:

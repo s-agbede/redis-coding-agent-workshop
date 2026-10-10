@@ -1,2 +1,0 @@
-agent-memory-client
-openai>=1.0.0

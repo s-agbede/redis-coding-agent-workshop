@@ -29,9 +29,12 @@ code-server --auth none --bind-addr 0.0.0.0:8080 --disable-telemetry --disable-u
   --extensions-dir /opt/code-server/extensions /workspace &
 code_pid=$!
 
-/opt/editor/.venv/bin/uvicorn app:app --app-dir /opt/editor --host 0.0.0.0 --port 8081 &
+# The editor API is private to the trusted Compose network (no published port).
+# Recognise the public HTTPS scheme forwarded by Nginx for the origin check.
+/opt/editor/.venv/bin/uvicorn app:app --app-dir /opt/editor --host 0.0.0.0 --port 8081 \
+  --proxy-headers --forwarded-allow-ips='*' &
 editor_pid=$!
-ttyd -W --check-origin -p 7681 --base-path /terminal -t fontSize=13 -t disableLeaveAlert=true \
+ttyd -W -p 7681 --base-path /terminal -t fontSize=13 -t disableLeaveAlert=true \
   tmux -f /etc/tmux.conf attach-session -t workshop &
 terminal_pid=$!
 

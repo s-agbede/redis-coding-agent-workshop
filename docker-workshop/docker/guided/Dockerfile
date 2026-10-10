@@ -29,7 +29,7 @@ COPY student/pyproject.toml student/uv.lock ./
 RUN uv sync --frozen
 
 COPY docker/guided/start.sh /start.sh
-COPY docker/web/tmux.conf /etc/tmux.conf
+COPY docker/guided/tmux.conf /etc/tmux.conf
 RUN chmod +x /start.sh
 
 WORKDIR /workspace

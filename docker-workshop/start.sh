@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
-cd "$(dirname "$0")"
-docker compose up --build -d
+# Compatibility entry point; the deployment lives at the repository root.
+exec bash "$(dirname "${BASH_SOURCE[0]}")/../start.sh" "$@"

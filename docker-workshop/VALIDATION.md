@@ -103,7 +103,7 @@ Both the failed and successful trial reports and diffs are preserved under
 successful final trial, not a reliability estimate.
 
 The running Docker service now uses the existing root configuration through
-`docker compose --env-file .env -f docker-workshop/docker-compose.yml`.
+`docker compose --env-file .env -f docker-workshop/docker-compose.yml` at the time of rehearsal. Following repository cleanup, use `bash start.sh` from the root instead.
 The terminal was idle and its preview empty before restart. Saved source and
 credential files remain unchanged, and command auto-approval remains disabled.
 The setup check now finds the key, and `uv run --no-sync python -m solutions.first_call`

@@ -4,11 +4,11 @@ Guide the group from one FizzBuzz request to their own working coding agent. Use
 
 ## Prepare before the session
 
-From `docker-workshop/`, preserve any existing `.env`, configure the model service and run `docker compose up --build -d`. Open http://localhost:8080. Each learner needs an independent stack. Browser edits apply to `docker-workshop/student/`; root files are a separate CLI starter.
+From the repository root, preserve any existing `.env`, configure the model service and run `bash start.sh`. Open http://localhost:8080. Each learner needs an independent stack. Browser edits apply to `docker-workshop/student/`; root files are a separate CLI starter.
 
-If credentials are already configured in the repository root `.env`, you can instead run `docker compose --env-file .env -f docker-workshop/docker-compose.yml up --build -d` from that root. Reuse the same `--env-file` on subsequent Compose updates so the runtime keeps the intended configuration.
+The root `docker-compose.yml` is the single deployment configuration. `start.sh` uses root `.env` when present and falls back to an existing `docker-workshop/.env` for older installations. Reuse `bash start.sh` for updates to preserve that configuration selection.
 
-Run `uv run python check_setup.py` in the embedded Terminal. It checks dependencies and configuration presence without contacting the provider or printing credentials. Validate an actual model request separately using completed code in a disposable workspace. Configuration changes require `docker compose up -d --force-recreate runtime` from the host's `docker-workshop/` directory.
+Run `uv run python check_setup.py` in the embedded Terminal. It checks dependencies and configuration presence without contacting the provider or printing credentials. Validate an actual model request separately using completed code in a disposable workspace. After configuration changes, run `bash start.sh --force-recreate` from the repository root; this restarts the workshop, so save learner work first.
 
 Distribute the exercise placeholders and intentionally broken capstone. Do not copy solutions into the learner starter when validating. Rehearse the completed agent against a fresh temporary copy of the app:
 
