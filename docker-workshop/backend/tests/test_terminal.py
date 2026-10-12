@@ -152,3 +152,81 @@ def test_rejects_malformed_json(terminal_client: tuple[TestClient, list[str]]) -
     )
     assert response.status_code == 422
     assert not sent
+
+
+@pytest.mark.parametrize("lab_id", ["zcqxlz", "tnvzfa"])
+def test_hosted_lab_origin_survives_internal_proxy_address(
+    tmp_path: Path, lab_id: str,
+) -> None:
+    sent: list[str] = []
+    client = TestClient(create_app(tmp_path, run_terminal=sent.append), base_url=f"http://rl-s-labs-{lab_id}")
+    response = client.post(
+        "/api/terminal/run", json={"command": "pwd"},
+        headers={
+            "Origin": f"https://8080-p-rl-s-labs-{lab_id}.labs.ps-redis.com",
+            "Sec-Fetch-Site": "same-origin",
+            "X-Forwarded-Proto": "http",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json() == {"status": "sent"}
+    assert sent == ["pwd"]
+
+
+@pytest.mark.parametrize("fetch_site", [None, "", "same-site", "cross-site", "none"])
+def test_hosted_lab_fallback_requires_explicit_same_origin_metadata(
+    terminal_client: tuple[TestClient, list[str]], fetch_site: str | None,
+) -> None:
+    client, sent = terminal_client
+    headers = {"Origin": "https://8080-p-rl-s-labs-zcqxlz.labs.ps-redis.com"}
+    if fetch_site is not None:
+        headers["Sec-Fetch-Site"] = fetch_site
+    response = client.post("/api/terminal/run", json={"command": "pwd"}, headers=headers)
+    assert response.status_code == 403
+    assert response.json()["diagnostics"]["sec_fetch_site"] == fetch_site
+    assert not sent
+
+
+@pytest.mark.parametrize("origin", [
+    "http://8080-p-rl-s-labs-zcqxlz.labs.ps-redis.com",
+    "https://8080-p-rl-s-labs-zcqxlz.labs.ps-redis.com:8443",
+    "https://8080-p-rl-s-labs-zcqxlz.labs.ps-redis.com/",
+    "https://8080-p-rl-s-labs-zcqxlz.labs.ps-redis.com?x=1",
+    "https://8080-p-rl-s-labs-zcqxlz.labs.ps-redis.com#fragment",
+    "https://8080-p-rl-s-labs-zcqxlz.labs.ps-redis.com.evil.test",
+    "https://8080-p-rl-s-labs-zcqxlz.labs.fakeps-redis.com",
+    "https://user@8080-p-rl-s-labs-zcqxlz.labs.ps-redis.com",
+    "https://8080-p-rl-s-labs-zcqxlz.labs.ps-redis.com@evil.test",
+    "https://8080-p-rl-s-labs-.labs.ps-redis.com",
+    "https://8080-p-rl-s-labs-zcqxlz.extra.labs.ps-redis.com",
+    "https://8081-p-rl-s-labs-zcqxlz.labs.ps-redis.com",
+    "https://other.labs.ps-redis.com",
+    "https://ps-redis.com",
+    "null",
+    "https://evil.test",
+    "https://8080-p-rl-s-labs-" + "a" * 47 + ".labs.ps-redis.com",
+])
+def test_hosted_lab_fallback_rejects_other_or_malformed_origins(
+    terminal_client: tuple[TestClient, list[str]], origin: str,
+) -> None:
+    client, sent = terminal_client
+    response = client.post(
+        "/api/terminal/run", json={"command": "pwd"},
+        headers={"Origin": origin, "Sec-Fetch-Site": "same-origin"},
+    )
+    assert response.status_code == 403
+    assert not sent
+
+
+def test_hosted_lab_still_requires_json(terminal_client: tuple[TestClient, list[str]]) -> None:
+    client, sent = terminal_client
+    response = client.post(
+        "/api/terminal/run", content='{"command":"pwd"}',
+        headers={
+            "Origin": "https://8080-p-rl-s-labs-zcqxlz.labs.ps-redis.com",
+            "Sec-Fetch-Site": "same-origin",
+            "Content-Type": "text/plain",
+        },
+    )
+    assert response.status_code == 415
+    assert not sent

@@ -6,7 +6,7 @@ export function withCopyButtons(html: string): string {
       const label = runnable ? 'Run code' : /class="language-(?:text|json)"/.test(attributes) ? 'Copy text' : 'Copy code'
       const action = runnable ? 'run' : 'copy'
       const description = runnable ? 'Run code in Terminal' : `${label} to clipboard`
-      const diagnostics = runnable ? '<details data-run-diagnostics hidden><summary>Diagnostic details</summary><p>These are the address values the backend received. Compare backend_origin with browser_origin: they should match. A null value means a header was missing. The same values are recorded in the backend logs.</p><pre data-diagnostic-text></pre><button type="button" data-copy-diagnostics>Copy diagnostics</button></details>' : ''
+      const diagnostics = runnable ? '<details data-run-diagnostics hidden><summary>Diagnostic details</summary><p>These are the address values the backend received. Normally backend_origin and browser_origin should match. Hosted Labs URLs may differ, but must use the supported HTTPS address format and sec_fetch_site must be same-origin. A null value means a header was missing. The same values are recorded in the backend logs.</p><pre data-diagnostic-text></pre><button type="button" data-copy-diagnostics>Copy diagnostics</button></details>' : ''
       return `<div class="lesson-code"><button type="button" data-${action}-code aria-label="${description}">${label}</button><span data-${action}-error role="alert" hidden></span><span data-run-status role="status" hidden></span>${block}${diagnostics}</div>`
     })
 }

@@ -2,6 +2,7 @@ import errno
 import json
 import logging
 import os
+import re
 import stat
 from collections.abc import Awaitable, Callable, Iterator
 from contextlib import ExitStack, contextmanager
@@ -17,6 +18,9 @@ from terminal import TerminalBusy, TerminalDispatcher, TerminalUnavailable
 
 MAX_CONTENT_BYTES = 1024 * 1024
 origin_logger = logging.getLogger("workshop.origin")
+# Match the entire canonical origin: no credentials, ports, paths or suffixes.
+# The fixed hostname prefix uses 17 of a DNS label's maximum 63 characters.
+LABS_ORIGIN = re.compile(r"https://8080-p-rl-s-labs-[a-z0-9]{1,46}\.labs\.ps-redis\.com")
 EXCLUDED_DIRECTORIES = {"node_modules", "__pycache__", "dist", "build"}
 LANGUAGES = {
     ".py": "python",
@@ -182,10 +186,16 @@ def create_app(
     ) -> Response:
         if request.url.path == "/api/terminal/run" and request.method == "POST":
             origin = f"{request.url.scheme}://{request.url.netloc}"
-            if (
-                request.headers.get("origin") != origin
-                or request.headers.get("sec-fetch-site", "same-origin") != "same-origin"
-            ):
+            browser_origin = request.headers.get("origin")
+            fetch_site = request.headers.get("sec-fetch-site")
+            exact_origin = browser_origin == origin and fetch_site in (None, "same-origin")
+            # Labs rewrites Host/scheme. Require explicit browser metadata for
+            # this fallback; missing metadata is accepted only by the exact check.
+            hosted_origin = (
+                fetch_site == "same-origin"
+                and LABS_ORIGIN.fullmatch(browser_origin or "") is not None
+            )
+            if not (exact_origin or hosted_origin):
                 # Share only bounded address metadata, never commands, cookies or credentials.
                 details = {
                     "backend_origin": origin,

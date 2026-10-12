@@ -23,10 +23,23 @@ The Instructions panel guides you through **Welcome → Workshop**. The seven le
 
 ## Workbench panels
 
-For hosting behind an HTTPS gateway, the gateway must preserve the public `Host`
-and set `X-Forwarded-Proto` to the original browser scheme. Nginx forwards that
-scheme to the editor API so Run code can validate the browser's origin. Do not
-rewrite the API's `Origin` header or remove its same-origin check.
+Run code normally checks the browser's Origin against the address Python sees.
+For hosting behind an HTTPS gateway, preserve the public `Host` and set
+`X-Forwarded-Proto` to the original browser scheme. Nginx forwards those values
+to the editor API. Do not rewrite the API's `Origin` header.
+
+The Labs platform rewrites the public address, so Run code also accepts origins
+matching `https://8080-p-rl-s-labs-<lab-id>.labs.ps-redis.com`, provided the browser
+sends `Sec-Fetch-Site: same-origin`. The lab ID must be 1–46 lowercase ASCII
+letters or digits; explicit ports, paths, credentials and other subdomains do
+not match. This supports changing lab URLs with the same image and no per-launch
+configuration. Missing fetch metadata is rejected for this fallback. Local and
+other deployments retain the existing exact-address check.
+
+This fallback recognizes the Labs URL pattern, not an individual deployment.
+Browser fetch metadata prevents ordinary requests from other web pages from
+using it, but non-browser clients can supply those headers themselves. It is
+not authentication; retain the Labs platform's access controls.
 
 The editor API trusts forwarded headers because port 8081 is private to the
 trusted Compose network. Do not publish that port or attach untrusted containers
@@ -64,8 +77,9 @@ If Run code reports “Terminal commands require the same workshop origin,” ex
 **Diagnostic details** beneath the command and use **Copy diagnostics**. You do
 not need browser developer tools or SSH to read these values. Compare
 `backend_origin` (the address Python sees) with `browser_origin` (the browser's
-Origin header). They should match, including scheme and port. `sec_fetch_site`
-should be `same-origin` when present. `forwarded_proto` and `forwarded_host` show
+Origin header). Normally they should match, including scheme and port. For the
+Labs URL pattern above, different internal and public addresses are expected,
+but `sec_fetch_site` must be present and equal to `same-origin`. `forwarded_proto` and `forwarded_host` show
 the forwarding headers received by Python; `null` means a header was absent.
 
 The same values appear in backend logs. On the Docker host, from the repository
