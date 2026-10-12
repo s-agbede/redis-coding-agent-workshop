@@ -1,111 +1,104 @@
 ---
 title: Make the reader useful on larger files
-editorFile: tools.py
+editorFile: agent.py
 ---
+**10 minutes.** The plain reader works, but sends an entire file on every read. You will improve the observation without taking navigation decisions away from the model.
 
-**7 minutes.** Your reader can supply a local fact. Let's give it a larger file and decide whether its result is useful for the question we asked.
+## Design the result before coding
 
-## Give the reader a larger input
+Take a minute to propose what a page should contain. How will the agent know the text is incomplete, locate evidence, and request the next part?
 
-The supplied **checkpoints/release_log.md** has 200 lines. Most are routine entries; the release decision is near line 180. Select **Run code**, then press **Enter** when the checkpoint proposes its read:
+<details>
+<summary>Our design</summary>
 
-```bash
-uv run python -m checkpoints.stage2_one_tool \
-  --prompt "Read checkpoints/release_log.md. What release decision is recorded near line 180? If range selection is available, read offset=170, limit=20."
+Return numbered lines within a budget, plus an explicit truncation notice and next offset. A silent cut could make the agent mistake a partial file for the whole file. The supplied `file_excerpt` helper handles empty files, invalid ranges and long lines as well as normal pages.
+
+</details>
+
+## Walk through a page
+
+`offset` is a **line number**, starting at 1; `limit` is the maximum number of lines to return. Python list indexes start at 0. The helper converts between them like this:
+
+```text
+start_index = offset - 1
+end_index = min(len(lines), start_index + limit)
+for index in range(start_index, end_index):
+    numbered = f"{index + 1}: {lines[index]}"
 ```
 
-When your plain reader executes, it returns all 200 lines. Find the decision in the tool result and look at the printed character count. How much of the returned text did you need to answer this question?
+For a seven-line file, imagine these requests. This is an illustration; the model will choose its own pages in the live exercise.
 
-The answer may be correct. The problem we can observe is unnecessary output and difficulty finding its location in the source. The character count measures the returned text, not model tokens; this file does not have to exceed the model's context window for the result to be worth improving.
+| Requested page | Python indexes considered | Returned line numbers | Next offset |
+| --- | --- | --- | --- |
+| `offset=1, limit=3` | 0, 1, 2 | 1, 2, 3 | `1 + 3 = 4` |
+| `offset=4, limit=3` | 3, 4, 5 | 4, 5, 6 | `4 + 3 = 7` |
+| `offset=7, limit=3` | 6 | 7 | No continuation: end of file |
 
-## Decide what a shorter result must preserve
+The helper adds numbered lines to `page`, stopping earlier if another line would exceed the character budget. Its continuation calculation is:
 
-Before opening our choice, discuss: **if we return only part of a file, what must the result include so the agent can locate it and continue?**
+```text
+next_offset = offset + len(page)
+```
 
-<details>
-<summary>Compare your design with ours</summary>
+Use the number of lines **actually returned**, not the requested limit. If a page beginning at line 4 can fit only two lines, the next offset is `4 + 2 = 6`; jumping to 7 would skip evidence. The result tells the model whether more lines remain and where to continue.
 
-| Keep | Why it matters |
-| --- | --- |
-| The selected text | Supplies evidence for the current question. |
-| Line numbers | Lets the agent identify the source location and inspect nearby code. |
-| Continuation guidance | Makes omissions visible and tells the agent how to request more. |
+If even one line exceeds the character budget, the helper labels that line as cut and suggests inspecting a column range with a command tool. Ordinary line paging cannot recover the rest of that same line. Our workshop's release log uses normal-sized lines; command tools arrive in the final lesson.
 
-We will let the caller select a range with `offset` and `limit`. Returning a short answer without its location or omissions would make it harder to judge what the agent has actually read.
+## Improve the same function and its contract
 
-</details>
-
-## Improve the result
-
-Open **tools.py**. Add `offset` and `limit` to `read_file`, then pass the text to the supplied `file_excerpt` helper. It numbers lines, bounds the output and adds continuation information when content remains. Offsets start at **1**.
-
-<details>
-<summary>Hint</summary>
-
-Keep the file read. Add defaults to the function signature and return `file_excerpt(text, offset, limit)`.
-
-</details>
+Type `exit`, then edit **agent.py**. Add `offset` and `limit` to `read_file` and return the supplied helper's formatted excerpt:
 
 <details>
 <summary>Copyable solution — replace the whole read_file function</summary>
 
 ```python
-def read_file(path: str, offset: int = 1, limit: int = MAX_READ_LINES) -> str:
+def read_file(path: str, offset: int = 1, limit: int = 80) -> str:
     text = Path(path).read_text(encoding="utf-8")
-    return file_excerpt(text, offset, limit)
+    return file_excerpt(text, offset=offset, limit=limit)
 ```
 
 </details>
 
-Save, then select **Run code** below. The only command change is `--paged`, which advertises the richer schema. The question is unchanged:
+Also replace the `TOOL_SCHEMAS` line so the model knows those arguments exist:
+
+```python
+TOOL_SCHEMAS = [LIST_SCHEMA, PAGED_READ_SCHEMA]
+```
+
+This explicit schema change matters. Updating a Python signature alone does not tell the remote model how to call it. No `--paged` mode or signature detection is involved.
+
+Save and restart:
 
 ```bash
-uv run python -m checkpoints.stage2_one_tool --paged \
-  --prompt "Read checkpoints/release_log.md. What release decision is recorded near line 180? If range selection is available, read offset=170, limit=20."
+uv run python main.py
 ```
-
-Inspect the proposed arguments before pressing **Enter**. If the model requests `offset=170, limit=20`, the result contains numbered lines **170–189**, including the decision on line **180**, and continuation guidance for line **190**. The model chooses its arguments; the prompt requests a range but does not force it. Use the actual result to assess what it read.
-
-Compare the two tool results: the text returned, the character counts and the source locations you can identify. The full agent's supplied `TOOL_SCHEMAS` already describes the new inputs.
-
-**Your decision:** is the excerpt enough evidence for our question, or would you request another page? Point to the line that supports your choice.
-
-<details>
-<summary>Compare your reasoning</summary>
-
-If the returned range includes the decision on line 180, it supports an answer about that recorded decision. A range that misses it does not. The line numbers let us check; the continuation information makes clear that other content remains unread.
-
-A different question may need more evidence. To follow a reference or request another page, our harness must be able to handle another tool request. That is our next step.
-
-</details>
-
-The core exercise ends here. The two experiments below are for spare time.
-
-<details>
-<summary>Optional: try the continuation</summary>
-
-To ask for the next page, run:
-
-```bash
-uv run python -m checkpoints.stage2_one_tool --paged \
-  --prompt "Read checkpoints/release_log.md with offset=190 and limit=20. Show the returned lines."
-```
-
-Check the proposed arguments and returned lines. The file ends at line 200, so a read starting at 190 can return fewer than 20 lines.
-
-</details>
-
-<details>
-<summary>Optional description experiment</summary>
-
-The description in the `read_file` entry of **TOOL_SCHEMAS** is part of the model's input. A helpful description says when to use the tool, what it returns and how to request more.
-
-Try this wording in the description:
 
 ```text
-Read numbered lines from a known UTF-8 file. Use offset and limit to select a range. If the result reports more lines, read the next offset to continue.
+What's the latest release decision?
 ```
 
-Save, then rerun the same `--paged` release-decision command above. Stop a still-running checkpoint with **Ctrl+C** first. Compare the proposed arguments. The model may choose well with either description; editing it does not guarantee a different choice.
+Inspect numbered lines and continuation guidance in the tool results. The model chooses which pages to request, and **your existing loop** executes those requests. There is no manual “next page” step. If the answer uses only the short brief, ask it to support the answer with the release log itself.
+
+Compare the bounded results with the earlier whole-file output. A shorter individual result does not guarantee fewer total tokens or fewer calls: navigation has a cost too.
+
+<details>
+<summary>What should remain true after this change?</summary>
+
+The answer should still have supporting evidence. For the log's decision, look near numbered line 180 in the output; this is a place to inspect after the run, not an offset to dictate in the prompt. If the model stops too early, ask what evidence is missing and inspect whether the continuation hint reached it.
+
+</details>
+
+Try a follow-up of your own about the conditions for release. Your history and reader now work together. Next, you will let this same program edit an application and check what happened.
+
+<details>
+<summary>Catch up if needed</summary>
+
+Save your attempt separately first. After typing `exit` to leave the chat, this copies the complete learner file **through this lesson**, including the earlier exercises:
+
+```bash
+cp solutions/steps/05-paging.py agent.py
+```
+
+Restart with `uv run python main.py`. Refresh the open editor file after copying, before saving over it. This is an explicit replacement of your work, not an automatic fallback.
 
 </details>

@@ -2,17 +2,13 @@
 
 **25 minutes.** Your coding agent now has the tools and loop needed to investigate the bug we set out to repair. Here is its ticket:
 
-> Completing a task looks successful, but refreshing the page makes it incomplete again. Find the cause, repair it and check that existing behavior still works.
+> Completing a task looks successful, but refreshing makes it incomplete again. Find and fix the bug.
 
 ## Reproduce the ticket
 
 Type **exit** to leave the previous agent session, so Terminal is ready for shell commands. Use **Run code** for the commands below.
 
-Open **App Preview**. If the task board already loads, reuse that server. Otherwise, start it once in the embedded Terminal:
-
-```bash
-uv run uvicorn app:app --app-dir capstone --host 0.0.0.0 --port 8000 --reload > /tmp/capstone-preview.log 2>&1 &
-```
+Open **App Preview**. The workshop starts the task board for you.
 
 In **App Preview**, create a task, mark it complete and refresh the page. The completion should disappear. Run the independent checker:
 
@@ -24,6 +20,25 @@ The starter should pass **8/9** checks, with **complete persistence** failing. T
 
 Before handing over the ticket, propose a cause: **did the update fail, or did the later read lose the update?** Keep that hypothesis in mind as you watch the investigation. You can change your mind when the agent finds evidence.
 
+## Give your agent actions
+
+So far, your registry could only discover and read files. In **agent.py**, replace the `TOOL_SCHEMAS` and `REGISTRY` assignments with:
+
+```python
+TOOL_SCHEMAS = [LIST_SCHEMA, PAGED_READ_SCHEMA, WRITE_FILE_SCHEMA, STR_REPLACE_SCHEMA, RUN_BASH_SCHEMA]
+REGISTRY = {
+    "list_files": list_files,
+    "read_file": read_file,
+    "write_file": write_file,
+    "str_replace": str_replace,
+    "run_bash": run_bash,
+}
+```
+
+Save the file. This registers supplied editing and command tools. Your request, history, reader and loop still drive the program. The terminal asks permission before `run_bash`; editing tools operate directly in the selected project. Only use this workshop's disposable project. A declined command is feedback, not a successful check.
+
+The next command still starts **main.py**, which imports your functions from **agent.py**. `--project capstone` selects the working directory and its `AGENTS.md` instructions; it does not select another lesson or implementation.
+
 ## Give the task to your agent
 
 ```bash
@@ -33,10 +48,10 @@ uv run python main.py --project capstone
 Use **Copy text** to paste this prompt into the running agent:
 
 ```text
-A task looks complete until the browser refreshes, then it becomes incomplete. Investigate and repair the app. Keep the existing API and page working. Do not change the verifier or workshop tests. Run python ../verify_capstone.py --project . before and after the repair. Finish with Changed files, Commands run, Results, and Unverified.
+Completing a task looks successful, but refreshing makes it incomplete again. Find and fix the bug.
 ```
 
-The harness loads the project's instructions and runs tools inside `capstone/`. Watch it read the code, make a change and request checks. Review each command before approving it. If checks fail, give the failure back to the agent and ask it to continue investigating.
+The harness loads `capstone/AGENTS.md`, which tells the agent how to check its work and preserve existing behavior. Tools run inside `capstone/`. Watch it read the code, make a change and request checks. Review each command before approving it. If checks fail, give the failure back to the agent and ask it to continue investigating.
 
 When it finishes, type **exit** to return to the shell. Agent tool edits are already saved to disk. Compare them in Code before saving over any unsaved editor buffer.
 
@@ -95,7 +110,7 @@ Finally, reload App Preview, create a **fresh** task, complete it and refresh. C
 <details>
 <summary>If preview or checking does not start</summary>
 
-Inspect `tail -n 30 /tmp/capstone-preview.log`. If port 8000 is already in use, reuse the existing preview server. If the checker cannot start, run `uv run python check_setup.py` and show the reported error to your instructor.
+Reload App Preview. If it still does not load, ask your instructor to check the runtime. If the checker cannot start, run `uv run python check_setup.py` and show the reported error to your instructor.
 
 </details>
 
@@ -111,3 +126,16 @@ An agent's report can be incomplete or mistaken. Independent checks measure the 
 Your request, history, tool execution and feedback loop enabled this repair; the independent checks establish what worked. If a check still fails, that result gives you a concrete next question for your agent.
 
 Further reading: [Demystifying evals for AI agents](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents).
+
+<details>
+<summary>Catch up if needed</summary>
+
+Save your attempt separately first. After typing `exit` to leave the chat, this copies the complete learner file **through this lesson**, including the earlier exercises:
+
+```bash
+cp solutions/steps/06-repair.py agent.py
+```
+
+Restart with `uv run python main.py --project capstone`. Refresh the open editor file after copying, before saving over it. This is an explicit replacement of your work, not an automatic fallback.
+
+</details>

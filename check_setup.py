@@ -17,7 +17,7 @@ class SetupCheck:
 
 def inspect_setup(root: Path, environ: Mapping[str, str]) -> list[SetupCheck]:
     """Inspect files, installed modules and key presence; perform no network I/O."""
-    files = ("first_call.py", "tools.py", "agent.py", "verify_capstone.py", "capstone/app.py")
+    files = ("main.py", "tools.py", "agent.py", "verify_capstone.py", "capstone/app.py")
     checks = [
         SetupCheck("Python", sys.version_info >= (3, 10), "Python 3.10+ required; Docker supplies it."),
         SetupCheck(

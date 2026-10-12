@@ -230,3 +230,13 @@ def test_hosted_lab_still_requires_json(terminal_client: tuple[TestClient, list[
     )
     assert response.status_code == 415
     assert not sent
+
+
+def test_preview_status_reports_only_ready_selection(tmp_path: Path, monkeypatch) -> None:
+    selection = tmp_path / "preview"
+    monkeypatch.setenv("WORKSHOP_PREVIEW_FILE", str(selection))
+    client = TestClient(create_app(tmp_path))
+    assert client.get("/api/health").json() == {"status": "ok"}
+    assert client.get("/api/preview").status_code == 503
+    selection.with_suffix(".ready").write_text(json.dumps({"mode": "demo", "revision": "demo-copy"}))
+    assert client.get("/api/preview").json() == {"mode": "demo", "revision": "demo-copy"}

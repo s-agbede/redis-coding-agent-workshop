@@ -2,10 +2,10 @@ import pytest
 
 import shlex
 import sys
-import importlib
 from pathlib import Path
 
-from tools import list_files, read_file, run_bash, str_replace, web_fetch
+from agent import read_file
+from tools import list_files, run_bash, str_replace
 
 
 def test_read_file_returns_numbered_page_and_next_offset(tmp_path):
@@ -92,55 +92,39 @@ def test_str_replace_errors_when_match_is_not_unique(tmp_path):
     assert f.read_text() == "x = 1\ny = 1\n"
 
 
-def test_list_files_returns_relative_project_paths(tmp_path):
+def test_list_files_returns_relative_project_paths(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     (tmp_path / "app").mkdir()
     (tmp_path / "app" / "main.py").write_text("print('hi')\n")
     (tmp_path / "README.md").write_text("# demo\n")
 
-    result = list_files(str(tmp_path))
+    result = list_files(".")
 
     assert result.splitlines() == ["README.md", "app/main.py"]
 
 
-@pytest.mark.parametrize("module_name", ["tools", "solutions.tools"])
 def test_list_files_empty_path_lists_current_directory(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, module_name: str,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    tool_module = importlib.import_module(module_name)
     (tmp_path / "app").mkdir()
     (tmp_path / "app/main.py").write_text("print('hi')\n", encoding="utf-8")
     (tmp_path / "README.md").write_text("# demo\n", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
 
-    result = tool_module.list_files(path="")
+    result = list_files(path="")
 
     assert result.splitlines() == ["README.md", "app/main.py"]
-    assert result == tool_module.list_files(path=".")
+    assert result == list_files(path=".")
 
 
-def test_list_files_skips_common_generated_directories(tmp_path):
+def test_list_files_skips_common_generated_directories(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     (tmp_path / ".venv").mkdir()
     (tmp_path / ".venv" / "ignored.py").write_text("nope\n")
     (tmp_path / "__pycache__").mkdir()
     (tmp_path / "__pycache__" / "ignored.pyc").write_text("nope\n")
     (tmp_path / "agent.py").write_text("# keep\n")
 
-    result = list_files(str(tmp_path))
+    result = list_files(".")
 
     assert result == "agent.py"
-
-
-def test_web_fetch_truncates_oversized_content():
-    # Behavior 8: large pages are truncated so they can't blow up the context window.
-    big = "A" * 10_000
-    result = web_fetch("https://example.com/docs", limit=100, fetcher=lambda url: big)
-
-    assert len(result) < len(big)
-    assert result.startswith("A" * 100)
-    assert "truncated" in result
-
-
-def test_web_fetch_returns_short_content_unchanged():
-    result = web_fetch("https://example.com", limit=100, fetcher=lambda url: "short page")
-
-    assert result == "short page"

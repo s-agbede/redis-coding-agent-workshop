@@ -8,12 +8,13 @@ In the guided workshop, edit and save in Code, then select Run code to run a she
 uv run python check_setup.py
 ```
 
+You will grow **agent.py** throughout the session, using `uv run python main.py` after each saved change. The other Python files supply tools, display and independent checks.
+
 ## Workshop
 
 1. [Make your first model call](tasks/01-first-call.md)
-2. [Design the agent with PEAS](tasks/02-peas.md)
-3. [Keep the conversation](tasks/03-conversation.md)
+2. [Keep the conversation](tasks/03-conversation.md)
+3. [Let the agent take several steps](tasks/06-agent-loop.md)
 4. [Give the model a file reader](tasks/04-one-tool.md)
 5. [Make the reader useful on larger files](tasks/05-better-tools.md)
-6. [Let the agent take several steps](tasks/06-agent-loop.md)
-7. [Ask your agent to fix the app](tasks/07-capstone.md)
+6. [Ask your agent to fix the app](tasks/07-capstone.md)

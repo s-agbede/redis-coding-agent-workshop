@@ -7,13 +7,15 @@ Run code needs an idle shell. Type `exit` to leave a chat, or press Ctrl+C to in
 | Activity | Command |
 | --- | --- |
 | Environment check | `uv run python check_setup.py` |
-| First model call | `uv run python first_call.py` |
-| Conversation | `uv run python -m checkpoints.stage1_chat` |
-| One file-tool exchange | `uv run python -m checkpoints.stage2_one_tool` |
-| Agent on the task board | `uv run python main.py --project capstone` |
+| Start your evolving agent | `uv run python main.py` |
+| Select the task-board project | `uv run python main.py --project capstone` |
 | Independent app checks | `uv run python verify_capstone.py --project capstone` |
 
-The first model call uses the FizzBuzz prompt in its source. The file-tool checkpoint asks for the release name in the supplied brief. Its `--prompt` option changes the question; `--paged` advertises the improved reader. Tool arguments are chosen by the live model.
+Type your question into the running agent. It is not a shell command or a command-line flag. From the loop lesson onward, ask “What's the latest release decision?” The project context names the evidence directory; the model discovers files and chooses its reads. Update `TOOL_SCHEMAS` explicitly when adding the loop, paging and repair actions; there is no hidden stage detection.
+
+The default request display shows message count and roles. `AGENT_TRACE_MESSAGES=1` enables full content previews when an instructor needs to inspect more detail; it does not change requests. Tool requests and results have their own panels.
+
+All core code edits go in **agent.py**. `main.py` supplies the session and SDK setup, `tools.py` supplies schemas/helpers/actions, and `ui.py` supplies display and approvals. Cumulative catch-up files in `solutions/steps/` deliberately replace `agent.py` through the selected lesson; preserve your own attempt before copying one.
 
 ## Message roles
 

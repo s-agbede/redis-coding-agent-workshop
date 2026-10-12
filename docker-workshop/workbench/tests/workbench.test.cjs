@@ -34,6 +34,7 @@ function harness() {
     frame.getAttribute = (name) => frame[name];
     section.children.iframe = frame;
     section.children['.panel-loading'] = makeElement();
+    section.children['.panel-title'] = makeElement();
     const button = makeElement();
     button.children.i = makeElement();
     section.children['.maximize-btn'] = button;
@@ -48,7 +49,7 @@ function harness() {
     window: { location: { origin }, addEventListener: (name, callback) => { listeners[name] = callback; } },
   });
   vm.runInContext(readFileSync(resolve(root, 'config.js'), 'utf8'), context);
-  vm.runInContext(script.replace(/init\(\);\s*$/, ''), context);
+  vm.runInContext(script.split('// Initialize when DOM is ready')[0], context);
   vm.runInContext(`panelState = {vscode:{visible:true},terminal:{visible:true},app:{visible:false}};
     rebuildHorizontalResizers = () => {};
     buildPanels = () => { throw new Error('Panel rebuild destroys iframe sessions'); };
@@ -290,4 +291,23 @@ test('Code readiness falls back to GET when code-server rejects HEAD with 405', 
   assert.equal(hidden, true);
   assert.equal(bodyCancelled, true);
   assert.equal(retries.length, 0);
+});
+
+
+test('demo preview reveals the app, labels it, and reloads when learner preview returns', async () => {
+  const { context, elements, run } = harness();
+  let selection = { mode: 'learner', revision: '/workspace/capstone' };
+  context.fetch = async () => ({ ok: true, json: async () => selection });
+  let reloads = 0;
+  context.loadPanelWithRetry = () => { reloads++; };
+  await run('refreshPreviewSelection()');
+  selection = { mode: 'demo', revision: '/workspace/output/demo-1/capstone' };
+  await run('refreshPreviewSelection()');
+  assert.equal(run('panelState.app.visible'), true);
+  assert.equal(elements.get('panel-app').children['.panel-title'].textContent, 'App Preview · Demo');
+  assert.equal(reloads, 1);
+  selection = { mode: 'learner', revision: '/workspace/capstone' };
+  await run('refreshPreviewSelection()');
+  assert.equal(elements.get('panel-app').children['.panel-title'].textContent, 'App Preview');
+  assert.equal(reloads, 2);
 });

@@ -11,16 +11,6 @@ const routes = [
     component: Welcome
   },
   {
-    path: '/review',
-    name: 'Review',
-    redirect: '/build'
-  },
-  {
-    path: '/demo',
-    name: 'Demo',
-    redirect: '/build'
-  },
-  {
     path: '/build',
     name: 'Build',
     component: Build

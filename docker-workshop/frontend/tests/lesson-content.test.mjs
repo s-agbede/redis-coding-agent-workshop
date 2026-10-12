@@ -5,7 +5,7 @@ const { withCopyButtons, copyCode } = lessonContent
 import { renderMarkdown } from '../../vendor/workshop-front-end-components/src/content-renderer/markdown.js'
 
 test('shell blocks run in Terminal while source answers retain copy actions', () => {
-  const html = renderMarkdown('```sh\nuv run first_call.py\n```\n\n<details>\n<summary>Hint</summary>\n\n```python\n    reader(**args)\n```\n\n</details>')
+  const html = renderMarkdown('```sh\nuv run agent.py\n```\n\n<details>\n<summary>Hint</summary>\n\n```python\n    reader(**args)\n```\n\n</details>')
   const enhanced = withCopyButtons(html)
   assert.equal((enhanced.match(/data-run-code/g) || []).length, 1)
   assert.equal((enhanced.match(/data-copy-code/g) || []).length, 1)
@@ -28,7 +28,7 @@ test('only shell languages get execution actions; prompts and protocol examples 
 test('running sends the exact displayed command once and reports dispatch, not success', async () => {
   assert.equal(typeof lessonContent.runCode, 'function')
   const calls = []
-  const command = 'uv run python first_call.py\nprintf "done\\n"'
+  const command = 'uv run python agent.py\nprintf "done\\n"'
   const result = await lessonContent.runCode(command, '/api/terminal/run', async (...args) => {
     calls.push(args)
     return new Response(JSON.stringify({ status: 'sent' }), { status: 200 })
@@ -85,10 +85,10 @@ test('clipboard denial or absence has an actionable visible error', async () => 
 })
 
 test('inline code and bold file references open only files available in the workspace', () => {
-  const html = renderMarkdown('Open **first_call.py**. Inspect `checkpoints/history.py`, `missing.py` and `read_file`.\n\n| Source |\n| --- |\n| **`tools.py`** |')
+  const html = renderMarkdown('Open **agent.py**. Inspect `checkpoints/history.py`, `missing.py` and `read_file`.\n\n| Source |\n| --- |\n| **`tools.py`** |')
   assert.equal(typeof lessonContent.withFileButtons, 'function')
-  const result = lessonContent.withFileButtons(html, ['first_call.py', 'checkpoints/history.py', 'tools.py'])
-  for (const path of ['first_call.py', 'checkpoints/history.py', 'tools.py']) {
+  const result = lessonContent.withFileButtons(html, ['agent.py', 'checkpoints/history.py', 'tools.py'])
+  for (const path of ['agent.py', 'checkpoints/history.py', 'tools.py']) {
     assert.ok(result.includes(`data-open-file="${path}"`))
     assert.ok(result.includes(`aria-label="Open ${path} in editor"`))
   }
@@ -98,9 +98,9 @@ test('inline code and bold file references open only files available in the work
 
 test('file actions preserve code blocks and existing links without introducing unsafe paths', () => {
   assert.equal(typeof lessonContent.withFileButtons, 'function')
-  const html = renderMarkdown('```text\nfirst_call.py\n```\n\n[**first_call.py**](https://example.com)\n\n`../secret.py` and `<img src=x>`')
-  assert.equal(lessonContent.withFileButtons(html, ['first_call.py', '../secret.py', '<img src=x>']), html)
-  assert.equal(lessonContent.withFileButtons('<strong>first_call.py</strong>', []), '<strong>first_call.py</strong>')
+  const html = renderMarkdown('```text\nagent.py\n```\n\n[**agent.py**](https://example.com)\n\n`../secret.py` and `<img src=x>`')
+  assert.equal(lessonContent.withFileButtons(html, ['agent.py', '../secret.py', '<img src=x>']), html)
+  assert.equal(lessonContent.withFileButtons('<strong>agent.py</strong>', []), '<strong>agent.py</strong>')
 })
 
 

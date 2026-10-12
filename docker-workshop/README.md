@@ -19,7 +19,7 @@ Open **http://localhost:8080**. `WORKSHOP_PORT` chooses another port;
 `WORKSHOP_BIND_ADDRESS` defaults to `0.0.0.0` for hosted labs; use `127.0.0.1` for local-only access. Each learner needs their own stack.
 The first build downloads VS Code and the locked Python dependencies.
 
-The Instructions panel guides you through **Welcome → Workshop**. The seven lessons begin with a FizzBuzz model call and PEAS design, then add conversation history, a plain reader, improved tool output and the agent loop. The final lesson asks the learner's agent to repair and test the task board.
+The Instructions panel guides you through **Welcome → Workshop**. The six lessons grow one `agent.py`: model call, history, tool loop, reader, paging and repair actions. PEAS is integrated into tool design. The final lesson asks the learner's agent to repair and test the task board.
 
 ## Workbench panels
 
@@ -52,20 +52,24 @@ both services with `bash start.sh` from the repository root.
 | Instructions | Follow the lessons and open hints or answers when useful. |
 | Code | Edit workshop files in VS Code. Click underlined file names in lessons to reveal them here, or use Explorer. Save with Ctrl/Cmd+S. |
 | Terminal | Run code sends a lesson shell command here. Read its output. Ctrl+C interrupts; `exit` leaves an agent conversation. |
-| App Preview | View the target task-list app. Show it from the panel menu and start its server in the final lesson. |
+| App Preview | View the target task-list app. Its server starts automatically; open it from the panel menu. |
 
 Use each panel's expand/restore control, drag a divider to resize, and use the
 menu to show or hide panels. Layout changes retain editor buffers and terminal
 sessions. An explicit panel reload or a runtime restart is different: save first.
 
-Code and Terminal share `student/` at **/workspace**, the same Python environment
-and the same processes. VS Code's integrated terminal also uses this environment.
-The root project's files are a separate CLI starter. Student files are bind-mounted;
+Code and Terminal share **/workspace**, the same Python environment and the same
+processes. VS Code's integrated terminal also uses this environment. Runtime startup
+prepares this workspace from the root source. The host stores learner files in
+`.workshop/`, which is ignored by Git and bind-mounted into the container. Existing
+edits to `agent.py` and `capstone/` are preserved; supplied helpers and solutions
+refresh from the maintained source on startup.
+
 VS Code settings and recovery data live in a named Docker volume. The host's macOS
 `.venv` is not used.
 
 VS Code detects saved file changes made by the agent or Terminal. If you have
-unsaved edits, compare them with external changes before saving. The exercises are in `first_call.py`, `checkpoints/stage1_chat.py`, `tools.py` and `agent.py`; find the marked gaps. The guided exercises use live calls; their unit tests are grouped in the final evaluation. The capstone has a separate seeded bug; keep its independent checker unchanged.
+unsaved edits, compare them with external changes before saving. The exercises are all in `agent.py`; run `uv run python main.py` after each saved edit. The guided exercises use live calls; their unit tests are grouped in the final evaluation. The capstone has a separate seeded bug; keep its independent checker unchanged.
 
 Shell blocks have **Run code**, Python answers have **Copy code**, and prompts have **Copy text**. Save source edits first. Run code requires an idle shell; if the agent is running, enter `exit` or interrupt it before starting a new command. It does not save editor buffers or certify the command's result.
 
@@ -97,11 +101,9 @@ work and run `bash start.sh` to rebuild both services, then refresh the browser.
 
 ## App Preview
 
-When instructed, start the supplied app once:
-
-```bash
-uv run uvicorn app:app --app-dir capstone --host 0.0.0.0 --port 8000 --reload > /tmp/capstone-preview.log 2>&1 &
-```
+The runtime starts the supplied task board automatically. Open **App Preview**.
+For the instructor demo, `uv run python demo.py` temporarily switches this same
+preview to the demo copy; exiting restores the learner app.
 
 Reload App Preview. Run `uv run python verify_capstone.py --project capstone` for
 the failing baseline and again after repair. Completion should survive browser
@@ -117,14 +119,14 @@ docker compose down
 bash start.sh
 ```
 
-Saved files remain in `student/`. Stopping the runtime ends its shell processes
+Saved files remain in `.workshop/`. Stopping the runtime ends its shell processes
 and capstone server. After configuration or image changes, use
 `bash start.sh`; changing `.env` requires recreating the runtime.
 Never use `down --volumes` to perform a routine update.
 
 The Compose project name remains `coding-agent-guided` for upgrades. The workbench
 uses a new Debian Python environment volume; the former Alpine volume is retained.
-The same student files remain in place. Restart the preview after upgrading.
+The same learner files remain in place. The preview starts automatically after upgrading.
 
 ## Verify and develop
 
@@ -151,5 +153,5 @@ interface uses code-server. Open the root URL to use lessons and Code together.
 - `frontend/`: guided lessons, static production build and proxy.
 - `backend/`: typed file API; the guide uses its workspace listing for file links.
 - `docker/guided/`: VS Code, managed Python, API and ttyd/tmux runtime.
-- `student/`: learner code, tests, checkpoints, cached documentation and solutions.
-- `vendor/workshop-front-end-components/`: shared guided lesson components.
+- Root `.workshop/`: generated learner files; maintained source lives at the repository root.
+- `vendor/workshop-front-end-components/`: retained shared header and Markdown renderer.

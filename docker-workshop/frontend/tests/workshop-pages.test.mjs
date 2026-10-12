@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { component, mount, findAll, textOf, flush, Stub } from './vue-harness.mjs'
-import { SelfChecks } from '../src/selfChecks.ts'
 import * as lessonContent from '../src/lessonContent.ts'
-import * as editorText from '../src/editorText.ts'
-import { EditorSession } from '../src/editorSession.ts'
 import { renderMarkdown } from '../../vendor/workshop-front-end-components/src/content-renderer/markdown.js'
 
 const memoryStorage = () => {
@@ -12,28 +9,17 @@ const memoryStorage = () => {
   return { getItem: key => map.get(key) ?? null, setItem: (key, value) => map.set(key, value) }
 }
 const lessons = [
-  { id: 'one', file: 'one.md', title: 'First lesson', content: 'Try it', editorFile: 'first_call.py' },
+  { id: 'one', file: 'one.md', title: 'First lesson', content: 'Try it', editorFile: 'agent.py' },
   { id: 'two', file: 'two.md', title: 'Second lesson', content: 'Prove it', editorFile: 'tools.py' }
 ]
-const config = {
-  loadWorkshopConfig: async () => ({}), getPhaseStepTitles: () => ['Welcome', 'Build'],
-  getEnabledPhases: () => [{ id: 'welcome', route: '/' }, { id: 'build', route: '/build' }],
-  isPhaseEnabled: () => true, getNextPhase: () => ({ route: '/build' })
-}
 const LessonContent = await component('../src/components/LessonContent.vue', {
   '../lessonContent': lessonContent,
   '../utils/basePath': { getApiUrl: path => path }
 })
 const buildImports = {
   '@redis-workshop/components/components/WorkshopHeader.vue': Stub,
-  '../components/BuildPanel.vue': Stub,
-  '../components/PanelToggle.vue': Stub,
-  '../components/PanelDivider.vue': Stub,
   '../components/LessonContent.vue': LessonContent,
-  '../utils/demoSteps': { loadAllDemoSteps: async () => lessons },
   '../utils/buildSteps': { loadAllBuildSteps: async () => lessons, markdownToHtml: content => `<p>${content}</p>` },
-  '../utils/workshopConfig': config,
-  '../selfChecks': { SelfChecks },
   '../utils/basePath': { getBasePath: () => '/hub/workshop/agent' }
 }
 const Build = await component('../src/views/Build.vue', buildImports)
@@ -83,15 +69,21 @@ test('the last lesson returns to welcome without claiming learner success', asyn
   page.unmount()
 })
 
-test('welcome shows outcomes and starts directly with the workshop', async () => {
+test('welcome shows 90 minutes while loading, then outcomes and the workshop action', async () => {
+  let finishLoading
+  const pendingContent = new Promise(resolve => { finishLoading = resolve })
   const Welcome = await component('../src/views/Welcome.vue', {
-    '../utils/pageContent': { loadWelcomeContent: async () => ({ title: 'Workshop', estimatedMinutes: 90, htmlContent: '<h2>What you will build</h2><p>A coding agent.</p>' }) },
-    '../utils/workshopConfig': config,
-    '../components/LessonContent.vue': LessonContent
+    '../utils/pageContent': { loadWelcomeContent: () => pendingContent },
+      '../components/LessonContent.vue': LessonContent
   })
   const routes = []
   const page = await mount(Welcome, {}, { $router: { push: route => routes.push(route) } })
+  assert.match(textOf(page.root), /90 minutes/)
+  assert.doesNotMatch(textOf(page.root), /30 minutes/)
+  finishLoading({ title: 'Workshop', estimatedMinutes: 90, htmlContent: '<h2>What you will build</h2><p>A coding agent.</p>' })
+  await flush()
   const text = textOf(page.root)
+  assert.match(text, /90 minutes/)
   assert.match(text, /Time to allow/)
   assert.match(text, /What you will build/)
   await page.vm.startWorkshop()
@@ -138,8 +130,7 @@ function runClickFixture(command) {
 test('welcome Run code reveals its parent Terminal and direct welcome refuses dispatch', async () => {
   const Welcome = await component('../src/views/Welcome.vue', {
     '../utils/pageContent': { loadWelcomeContent: async () => ({ htmlContent: '<pre><code class="language-bash">uv run python check_setup.py</code></pre>' }) },
-    '../utils/workshopConfig': config,
-    '../components/LessonContent.vue': LessonContent
+      '../components/LessonContent.vue': LessonContent
   })
   const { messages } = guideBrowser()
   let dispatches = 0
@@ -231,60 +222,22 @@ test('only the current lesson content and file action appear beside navigation',
   browserStorage()
   const page = await mount(Build)
   assert.equal(findAll(page.root, el => el.props.class === 'component-reference').length, 0)
-  assert.match(textOf(page.root), /Open first_call.py/)
+  assert.match(textOf(page.root), /Open agent.py/)
   await page.vm.goToStep(1)
   assert.match(textOf(page.root), /Open tools.py/)
   assert.doesNotMatch(textOf(page.root), /Open main.py|Your role:/)
   page.unmount()
 })
 
-test('clicking a file in a lesson opens it through the workspace and saves previous edits', async () => {
-  browserStorage()
-  Object.assign(window, { addEventListener() {}, removeEventListener() {} })
-  const documents = new Map([['first_call.py', '# first'], ['tools.py', '# reader']])
-  const operations = []
-  globalThis.fetch = async (url, init) => {
-    const response = data => ({ ok: true, json: async () => data })
-    if (url === '/api/editor/files') return response([...documents.keys()].map(path => ({ path })))
-    if (init?.method === 'POST') {
-      const { path, content } = JSON.parse(init.body)
-      operations.push(`save ${path}`)
-      documents.set(path, content)
-      return response({})
-    }
-    const path = new URL(url, 'http://local').searchParams.get('path')
-    operations.push(`read ${path}`)
-    return response({ path, content: documents.get(path), language: 'python' })
-  }
-  const CodeEditor = await component('../src/components/CodeEditor.vue', {
-    '../editorSession': { EditorSession }, '../editorText': editorText,
-    '../utils/basePath': { getApiUrl: path => path }, 'vue-router': { onBeforeRouteLeave() {} }
-  })
-  const BuildPanel = await component('../src/components/BuildPanel.vue', {
-    './CodeEditor.vue': CodeEditor, './AppEmbed.vue': Stub,
-    './PanelToggle.vue': Stub, './PanelDivider.vue': Stub,
-    '../utils/basePath': { getApiUrl: path => path }
-  })
-  const pageComponent = await component('../src/views/Build.vue', {
-    ...buildImports, '../components/BuildPanel.vue': BuildPanel,
-    '../utils/buildSteps': { loadAllBuildSteps: async () => [{ ...lessons[0], content: 'Open **tools.py**.' }], markdownToHtml: renderMarkdown }
-  })
-  const page = await mount(pageComponent)
-  const htmlNode = findAll(page.root, el => el.props.innerHTML?.includes('tools.py'))[0]
-  assert.match(htmlNode.props.innerHTML, /data-open-file="tools.py"/)
-  const field = findAll(page.root, el => el.props['aria-label'] === 'Contents of first_call.py')[0]
-  field.value = '# my code'
-  field.props.onInput({ target: field })
-  const fileButton = { dataset: { openFile: 'tools.py' } }
-  page.vm.expandedPanel = 'instructions'
-  await htmlNode.props.onClick({ target: { closest: selector => selector === 'button[data-open-file]' ? fileButton : null } })
-  await flush()
-  assert.equal(page.vm.selectedFile, 'tools.py')
-  assert.equal(page.vm.expandedPanel, null, 'opening a file reveals the workspace beside the instructions')
-  assert.equal(field.value, '# reader')
-  assert.equal(field.focused, true)
-  assert.equal(documents.get('first_call.py'), '# my code')
-  assert.deepEqual(operations, ['read first_call.py', 'save first_call.py', 'read tools.py'])
+test('standalone instructions use the existing workbench instead of a second editor', async () => {
+  guideBrowser()
+  window.parent = window
+  window.location.pathname = '/build'
+  const page = await mount(Build)
+  assert.equal(findAll(page.root, el => el.type === 'textarea' || el.type === 'iframe').length, 0)
+  assert.equal(page.vm.terminalAvailable, false)
+  await page.vm.openFile('agent.py')
+  assert.match(textOf(page.root), /open the workbench/i)
   page.unmount()
 })
 
@@ -302,7 +255,7 @@ function guideBrowser() {
   const requests = []
   globalThis.fetch = async url => {
     requests.push(url)
-    return { ok: true, json: async () => [{ path: 'tools.py' }, { path: 'first_call.py' }, { path: 'main.py' }, { path: 'ui.py' }, { path: 'agent.py' }] }
+    return { ok: true, json: async () => [{ path: 'tools.py' }, { path: 'agent.py' }, { path: 'main.py' }, { path: 'ui.py' }, { path: 'agent.py' }] }
   }
   return { messages, requests }
 }
@@ -341,11 +294,11 @@ test('guide filename and source buttons use the root file list and dispatch to t
   assert.match(htmlNode.props.innerHTML, /data-open-file="tools.py"/)
   const fileButton = { dataset: { openFile: 'tools.py' } }
   await htmlNode.props.onClick({ target: { closest: selector => selector === 'button[data-open-file]' ? fileButton : null } })
-  const sourceButton = findAll(page.root, el => el.type === 'button' && el.text === 'Open first_call.py')[0]
+  const sourceButton = findAll(page.root, el => el.type === 'button' && el.text === 'Open agent.py')[0]
   await sourceButton.props.onClick()
   assert.deepEqual(messages, [
     [{ type: 'open-workshop-file', path: 'tools.py' }, 'http://localhost:8080'],
-    [{ type: 'open-workshop-file', path: 'first_call.py' }, 'http://localhost:8080']
+    [{ type: 'open-workshop-file', path: 'agent.py' }, 'http://localhost:8080']
   ])
   await page.vm.openFile('../secret')
   assert.equal(messages.length, 2)
@@ -381,7 +334,7 @@ test('wide embedded guide scrolls each new lesson into document view', async () 
   page.unmount()
 })
 
-test('wide standalone navigation keeps scrolling inside the instruction panel', async () => {
+test('standalone instructions scroll the new heading into document view', async () => {
   browserStorage()
   window.matchMedia = () => ({ matches: false })
   const page = await mount(Build)
@@ -390,7 +343,7 @@ test('wide standalone navigation keeps scrolling inside the instruction panel', 
   await page.vm.goToStep(1)
   const heading = findAll(page.root, el => el.type === 'h2' && el.text === 'Second lesson')[0]
   assert.equal(panel.scrollTop, 0)
-  assert.equal(heading.scrolledIntoView, false)
+  assert.equal(heading.scrolledIntoView, true)
   page.unmount()
 })
 
@@ -427,32 +380,17 @@ test('unavailable guide file list leaves lessons usable and shows a retry contro
   page.unmount()
 })
 
-test('Workshop Home stays within the guide in review, demo and build', async () => {
+test('Workshop Home stays within the guide instead of nesting the workbench', async () => {
   guideBrowser()
   const WorkshopHeader = await component('../../vendor/workshop-front-end-components/src/components/WorkshopHeader.vue')
-  const imports = { ...guideImports, '@redis-workshop/components/components/WorkshopHeader.vue': WorkshopHeader }
-  const Guide = await component('../src/views/Build.vue', imports)
-  const Review = await component('../src/views/Review.vue', {
-    '@redis-workshop/components/components/WorkshopHeader.vue': WorkshopHeader,
-    '../utils/basePath': { getBasePath: () => '/guide' },
-    '../utils/pageContent': { loadReviewContent: async () => ({ htmlContent: '<p>Concepts</p>' }) },
-    '../utils/workshopConfig': { ...config, getPreviousPhase: () => ({ route: '/', title: 'Welcome' }) }
+  const Guide = await component('../src/views/Build.vue', {
+    ...guideImports, '@redis-workshop/components/components/WorkshopHeader.vue': WorkshopHeader
   })
-  for (const [view, props] of [[Review, {}], [Guide, { phase: 'demo' }], [Guide, { phase: 'build' }]]) {
-    const page = await mount(view, props)
-    const home = findAll(page.root, el => el.type === 'a' && el.props.class === 'back-link')[0]
-    assert.equal(home.props.href, '/guide/', 'header home must not nest the workbench inside Instructions')
-    page.unmount()
-  }
-  browserStorage()
-  const Standalone = await component('../src/views/Build.vue', {
-    ...buildImports, '@redis-workshop/components/components/WorkshopHeader.vue': WorkshopHeader
-  })
-  const page = await mount(Standalone)
-  assert.equal(findAll(page.root, el => el.type === 'a' && el.props.class === 'back-link')[0].props.href, '/')
+  const page = await mount(Guide)
+  const home = findAll(page.root, el => el.type === 'a' && el.props.class === 'back-link')[0]
+  assert.equal(home.props.href, '/guide/')
   page.unmount()
 })
-
 
 test('new curriculum ignores old numeric lesson positions and restores by file name', async () => {
   browserStorage()
@@ -490,4 +428,35 @@ test('origin diagnostics are readable, copyable and cleared on the next attempt'
     assert.equal(fixture.diagnostics.hidden, true)
     assert.equal(fixture.diagnosticText.textContent, '')
   } finally { globalThis.fetch = originalFetch; page.unmount() }
+})
+
+
+test('header navigation directly connects welcome and workshop without configuration', async () => {
+  browserStorage()
+  const routes = []
+  const page = await mount(Build, {}, { $router: { push: route => routes.push(route) } })
+  page.vm.navigateToPhase(1)
+  page.vm.navigateToPhase(2)
+  assert.deepEqual(routes, ['/', '/build'])
+  page.unmount()
+})
+
+
+test('the standalone development guide links to the running workbench, not itself', async () => {
+  guideBrowser()
+  window.parent = window
+  const previous = process.env.NODE_ENV
+  process.env.NODE_ENV = 'development'
+  const App = await component('../src/App.vue')
+  App.components = { RouterView: Stub }
+  let page
+  try {
+    page = await mount(App)
+    const link = findAll(page.root, el => el.type === 'a')[0]
+    assert.equal(link.props.href, 'http://localhost:8080/')
+  } finally {
+    page?.unmount()
+    if (previous === undefined) delete process.env.NODE_ENV
+    else process.env.NODE_ENV = previous
+  }
 })

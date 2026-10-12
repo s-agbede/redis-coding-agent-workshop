@@ -1,155 +1,89 @@
-"""The pretty-REPL: a thin rich layer over the agent loop.
+"""Terminal display and command approval, called explicitly by the agent."""
 
-Deliberately linear (no full-screen TUI) so control flow stays legible and a bug
-in the loop produces a clean traceback. All display and human-in-the-loop gating
-live here, wrapped around the model client and the tool registry — the agent loop
-itself stays pure.
-
-By default it shows a spinner while the model is thinking and a one-line summary
-per tool action. Set AGENT_VERBOSE=1 to also print raw tool arguments and results
-(useful when teaching the mechanism).
-"""
-
+import json
 import os
-import re
+from typing import Any
 
-from rich.console import Console
-from rich.markup import escape
+from rich.console import Console, Group
 from rich.prompt import Prompt
+from rich.markdown import Markdown
+from rich.panel import Panel
+from rich.syntax import Syntax
+from rich.text import Text
 
 console = Console()
-VERBOSE = bool(os.environ.get("AGENT_VERBOSE"))
-AUTO_APPROVE = bool(os.environ.get("AGENT_AUTO_APPROVE"))
 
 
-def banner(model):
+def banner(model: str) -> None:
     console.print(f"[bold cyan]coding-agent[/] · [dim]{model}[/] · type a task, or 'exit'")
-    console.print("[dim]/auto turns automatic approval on or off · when asked: y = allow, n = refuse, a = allow all[/]")
+    console.print("[dim]Shell commands ask for approval before they run.[/]")
 
 
-def info(message):
+def info(message: str) -> None:
     console.print(f"[dim]{message}[/]")
 
 
-class Approvals:
-    """Session approval state. Shared with the tool registry and toggled at
-    runtime with the /auto command."""
-
-    def __init__(self, auto=None):
-        self.auto = AUTO_APPROVE if auto is None else auto
-
-    def toggle(self):
-        self.auto = not self.auto
-        return self.auto
-
-
-def prompt_user():
+def prompt_user() -> str:
     return console.input("[bold green]you ›[/] ")
 
 
-def show_answer(text):
+def show_answer(text: str) -> None:
     if text:
-        console.print(f"[bold]🤖[/] {text}")
+        markdown = Markdown(text)
+        # Without an explicit code block, Markdown can flatten Python lines and
+        # interpret comments as headings. Preserve the response literally then.
+        has_code_block = any(token.type in {"fence", "code_block"} for token in markdown.parsed)
+        body = markdown if has_code_block else Text(text)
+        console.print(Panel(body, title="Answer", border_style="green", padding=(1, 2)))
 
 
-def _summarize(name, args):
-    """A short, human-readable phrase for what a tool call is about to do."""
-    if name == "list_files":
-        return f"Listing files in {args.get('path', '.')}"
-    if name == "read_file":
-        return f"Reading {args.get('path', '?')}"
-    if name == "write_file":
-        return f"Writing {args.get('path', '?')}"
-    if name == "str_replace":
-        return f"Editing {args.get('path', '?')}"
-    if name == "run_bash":
-        cmd = str(args.get("command", "")).strip().splitlines()[0] if args.get("command") else ""
-        return f"Running: {cmd[:70]}"
-    if name == "web_fetch":
-        return f"Fetching {args.get('url', '?')}"
-    return name
+def show_turn(number: int) -> None:
+    console.print()
+    console.rule(f"Model turn {number}", style="cyan", align="left")
 
 
-# --- model "thinking" spinner, via a transparent client proxy ----------------
-# run_agent calls client.chat.completions.create(...); we wrap that call so the
-# wait shows a spinner, without changing the loop.
-
-class _SpinnerCompletions:
-    def __init__(self, inner):
-        self._inner = inner
-
-    def create(self, **kwargs):
-        with console.status("[dim]thinking…[/]", spinner="dots"):
-            return self._inner.create(**kwargs)
+def show_tool_request(call_id: str, name: str, arguments: str) -> None:
+    try:
+        formatted = json.dumps(json.loads(arguments), indent=2, ensure_ascii=False)
+        body = Syntax(formatted, "json", word_wrap=True, background_color="default")
+    except (ValueError, TypeError):
+        body = Text(arguments)
+    console.print(Panel(Group(Text(name, style="bold"), body),
+                        title=Text(f"REQUEST {call_id}"), border_style="blue"))
 
 
-class _SpinnerChat:
-    def __init__(self, inner):
-        self.completions = _SpinnerCompletions(inner.completions)
+def show_tool_result(call_id: str, result: str) -> None:
+    failed = result.startswith("Error:")
+    if result.startswith("exit "):
+        failed = result.splitlines()[0] != "exit 0"
+    console.print(Panel(
+        Text(result), title=Text(f"RESULT {call_id}"),
+        subtitle=f"{len(result)} characters, not tokens",
+        border_style="red" if failed else "cyan",
+    ))
 
 
-class _SpinnerClient:
-    def __init__(self, inner):
-        self.chat = _SpinnerChat(inner.chat)
+def show_request(messages: list[Any]) -> None:
+    """Show the outgoing history without modifying it or wrapping the SDK."""
+    previews = [
+        (message.get("role", ""), message.get("content") or "")
+        if isinstance(message, dict) else (message.role, message.content or "")
+        for message in messages
+    ]
+    show_turn(1 + sum(role == "assistant" for role, _ in previews))
+    count = len(previews)
+    console.print(f"REQUEST PREVIEW: {count} {'message' if count == 1 else 'messages'}", markup=False)
+    console.print("Roles: " + " -> ".join(role for role, _ in previews), markup=False)
+    if os.environ.get("AGENT_TRACE_MESSAGES") == "1":
+        for index, (role, content) in enumerate(previews, start=1):
+            console.print(f"[{index}] {role}: {content[:600]}", markup=False, highlight=False)
+            if len(content) > 600:
+                console.print("[preview shortened; full content sent]", markup=False)
 
 
-def with_spinner(client):
-    """Wrap a model client so each request shows a 'thinking…' spinner."""
-    return _SpinnerClient(client)
-
-
-# --- tool display + human-in-the-loop gating ---------------------------------
-
-def wrap_registry(registry, gated, approvals=None):
-    """Return a registry whose tools show a summary + spinner and (if gated) ask
-    approval — without changing the agent loop that calls them.
-
-    Gated tools (run_bash, web_fetch) prompt [y/n/a] unless auto-approve is on,
-    via the AGENT_AUTO_APPROVE env var, the /auto command, or the user answering
-    'a' (approve all) once. Pass a shared Approvals instance to toggle at runtime.
-    """
-    approvals = approvals or Approvals()
-
-    def wrap(name, func):
-        def wrapped(**args):
-            summary = _summarize(name, args)
-            if VERBOSE:
-                detail = ", ".join(f"{k}={v!r}" for k, v in args.items())
-                console.print(f"[blue]🔧 {name}[/] › {detail}")
-
-            if name in gated and not approvals.auto:
-                console.print(f"[blue]• {summary}[/]")
-                choice = Prompt.ask("   approve?", choices=["y", "n", "a"], default="y")
-                if choice == "n":
-                    console.print("   [yellow]↳ declined[/]")
-                    return "User declined to run this tool."
-                if choice == "a":
-                    approvals.auto = True
-                    console.print("   [dim]↳ auto-approving tools for the rest of this session[/]")
-
-            try:
-                with console.status(f"[dim]{escape(summary)}…[/]", spinner="dots"):
-                    result = func(**args)
-            except Exception as error:
-                console.print(f"[red]✗[/] {escape(summary)} — failed: {escape(str(error))}")
-                raise  # The loop converts this into feedback for the next model turn.
-
-            if name == "run_bash":
-                # run_bash's public string contract starts with the process exit code.
-                status = re.match(r"^exit (-?\d+)(?:\n|$)", str(result))
-                succeeded = status is not None and int(status[1]) == 0
-                marker = "[green]✓[/]" if succeeded else "[red]✗[/]"
-                console.print(f"{marker} {escape(summary)}")
-                tail = str(result)[-1200:]
-                if len(str(result)) > 1200:
-                    tail = str(result).splitlines()[0] + "\n… [showing output tail]\n" + tail
-                console.print(tail, markup=False, highlight=False)
-            else:
-                console.print(f"[green]✓[/] {escape(summary)}")
-                if VERBOSE:
-                    console.print(f"   ↳ {result}", markup=False, highlight=False)
-            return result
-
-        return wrapped
-
-    return {name: wrap(name, func) for name, func in registry.items()}
+def approve_command(command: str) -> bool:
+    """Require consent before the loop executes a shell command."""
+    if os.environ.get("AGENT_AUTO_APPROVE") == "1":
+        return True
+    console.print(Text(command))
+    return Prompt.ask("Run this command?", choices=["y", "n"], default="y") == "y"

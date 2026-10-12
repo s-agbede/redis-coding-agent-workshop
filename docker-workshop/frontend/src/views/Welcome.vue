@@ -14,7 +14,7 @@
       <div class="intro-meta">
         <div class="meta-item">
           <span class="meta-label">Time to allow</span>
-          <span class="meta-value">{{ content?.estimatedMinutes || 30 }} minutes</span>
+          <span class="meta-value">{{ content?.estimatedMinutes || 90 }} minutes</span>
         </div>
       </div>
 
@@ -30,7 +30,6 @@
 
 <script>
 import { loadWelcomeContent } from '../utils/pageContent'
-import { loadWorkshopConfig, getNextPhase } from '../utils/workshopConfig'
 import LessonContent from '../components/LessonContent.vue'
 
 export default {
@@ -39,7 +38,6 @@ export default {
   data() {
     return {
       content: null,
-      config: null,
       loading: true,
       error: null
     }
@@ -50,21 +48,14 @@ export default {
     }
   },
   async mounted() {
-    // Load workshop config
-    try {
-      this.config = await loadWorkshopConfig()
-    } catch (err) {
-      console.warn('Failed to load workshop config:', err)
-    }
-
     // Load content from welcome.md
     try {
       this.content = await loadWelcomeContent()
       if (!this.content) {
         // Use fallback content if file doesn't exist
         this.content = {
-          title: this.config?.title || 'Build a Coding Agent',
-          subtitle: this.config?.subtitle || 'From first principles',
+          title: 'Build a Coding Agent',
+          subtitle: 'From first principles',
           description: 'Unable to load workshop content. Refresh to try again.',
           estimatedMinutes: 90,
           difficulty: 'Beginner',
@@ -91,9 +82,7 @@ export default {
       if (this.terminalAvailable) window.parent.postMessage({ type: 'show-workshop-terminal' }, window.location.origin)
     },
     startWorkshop() {
-      // Navigate to the next enabled phase after welcome
-      const nextPhase = getNextPhase(this.config, 'welcome')
-      this.$router.push(nextPhase?.route || '/build')
+      this.$router.push('/build')
     }
   }
 }

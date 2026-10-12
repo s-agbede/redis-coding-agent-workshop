@@ -1,102 +1,63 @@
 ---
 title: Keep the conversation
-editorFile: checkpoints/stage1_chat.py
+editorFile: agent.py
 ---
+**9 minutes.** Your program answers one question. Let's see what happens when your next question depends on its answer.
 
-**9 minutes.** You have a FizzBuzz answer in the Terminal. Let's try continuing that conversation. Before running the command, predict: **will this request contain the earlier FizzBuzz code?**
+## Observe the missing context
 
-## Try a follow-up
-
-Select **Run code**. The supplied `--show-messages` option prints the message count, roles and content previews just before the SDK call:
-
-```bash
-uv run python first_call.py --show-messages --prompt "Now change it to stop at 20."
-```
-
-Find the request preview in Terminal. How many messages are there? Can you find either the original FizzBuzz request or the model's earlier code?
-
-The preview contains one user message: the new instruction. Now look at `ask`: it builds that list afresh for each call. A model might ask for clarification or guess the intended task. Even a good guess does not add the missing history to the request.
-
-The trace shows the messages passed to the SDK, not the model's internal reasoning. Long content previews are explicitly shortened for display; the full messages still go into the request.
-
-We need to preserve both sides of the exchange and include them in the next request:
-
-```text
-First request:    user asks for FizzBuzz
-Follow-up:        user asks for FizzBuzz → assistant's code → user's new instruction
-```
-
-This chat-completions interface does not automatically add earlier calls. Keeping that list is our harness's responsibility.
-
-## Keep the messages
-
-Open **checkpoints/stage1_chat.py**. The supplied chat program creates a list and passes it into `chat_turn(client, messages, user)` for each turn. Complete that function:
-
-1. Append the new user message.
-2. Send the entire list to the model.
-3. Append the returned assistant message.
-4. Return its text for display.
-
-Do not create a new list inside the function. Keeping the assistant's response matters too: it contains the code the next instruction refers to. The SDK accepts the returned message object in later requests.
-
-<details>
-<summary>Hint</summary>
-
-Use `messages.append(...)` before and after the SDK call. The caller keeps this same list between turns.
-
-</details>
-
-<details>
-<summary>Copyable solution — replace the whole chat_turn function</summary>
-
-```python
-def chat_turn(client: Any, messages: list[Any], user: str) -> str:
-    messages.append({"role": "user", "content": user})
-    response = client.chat.completions.create(model=MODEL, messages=messages)
-    message = response.choices[0].message
-    messages.append(message)
-    return message.content or ""
-```
-
-</details>
-
-## Try the same exchange with history
-
-Save, then select **Run code**:
-
-```bash
-uv run python -m checkpoints.stage1_chat --show-messages
-```
-
-Use **Copy text** and paste these prompts into the running chat one at a time:
-
-```text
-Write a Python function that returns FizzBuzz for the integers 1 to 15.
-```
-
-Before sending the next prompt, predict the roles you will see in its request preview:
+In the chat from the previous lesson, ask:
 
 ```text
 Now change it to stop at 20.
 ```
 
-Compare your prediction with the actual messages. You should now see:
+Inspect the next **REQUEST PREVIEW**, not just the answer. You should see the system instruction and your latest question; the earlier FizzBuzz question and code are absent. Even a lucky model guess cannot change what we sent.
 
-```text
-user → assistant → user
-```
+An API call does not automatically remember earlier calls. The conversation lives in our Python list, and our program decides what to include in each request.
 
-Find the earlier code inside the assistant message. Compare the new answer with that code. Your two `append` calls let the next request carry both sides of the exchange; displaying an answer alone would not retain it.
+## Make one small change
 
-If you restart after an edit, repeat both prompts: the new process begins with an empty history.
-
-**Quick question:** have we taught the model this conversation permanently?
+Type `exit` so Terminal returns to the shell. In **agent.py**, find `remember`. It currently clears earlier messages before appending your next question. Replace it so it **only appends** the new user message. `run_agent` already appends each assistant response.
 
 <details>
-<summary>Compare your answer</summary>
+<summary>Copyable solution — replace the whole remember function</summary>
 
-No. The harness stores the messages and sends them with the next request. The model's trained weights are unchanged. Restarting this program discards the list; printing a reply does not automatically preserve it for a later call.
+```python
+def remember(messages: list[Any], user: str) -> None:
+    messages.append({"role": "user", "content": user})
+```
 
 </details>
 
-Keep the chat running for the next lesson. We have retained the conversation; next we need information from a local file.
+Save and restart the same program:
+
+```bash
+uv run python main.py
+```
+
+Repeat both prompts: the FizzBuzz request first, then “Now change it to stop at 20.” The second preview should now include **system → user → assistant → user**. The earlier generated code is available to the model, so the follow-up has a clear referent.
+
+Ask a follow-up of your own. Explain which previous message gives it meaning. Restarting this process creates a fresh list; this is session history, not durable memory or model training.
+
+<details>
+<summary>Compare your explanation</summary>
+
+Keeping a Python list is only half the mechanism. `ask` sends that list again on every request. The model receives the previous answer as text in the next input, rather than remembering an earlier API connection.
+
+</details>
+
+Next, ask “What's the latest release decision?” It may say it lacks project information, or it may guess. Either way, has our program actually read a project file yet?
+
+<details>
+<summary>Catch up if needed</summary>
+
+Save your attempt separately first. After typing `exit` to leave the chat, this copies the complete learner file **through this lesson**, including the earlier exercises:
+
+```bash
+cp solutions/steps/02-history.py agent.py
+```
+
+Restart with `uv run python main.py`. Refresh the open editor file after copying, before saving over it. This is an explicit replacement of your work, not an automatic fallback.
+
+</details>

@@ -3,8 +3,8 @@ name: coding-agent-guided
 services:
   frontend:
     build:
-      context: ./docker-workshop
-      dockerfile: frontend/Dockerfile
+      context: .
+      dockerfile: docker-workshop/frontend/Dockerfile
     ports:
       - "${WORKSHOP_BIND_ADDRESS:-0.0.0.0}:${WORKSHOP_PORT:-8080}:80"
     depends_on:
@@ -14,22 +14,22 @@ services:
 
   runtime:
     build:
-      context: ./docker-workshop
-      dockerfile: docker/guided/Dockerfile
+      context: .
+      dockerfile: docker-workshop/docker/guided/Dockerfile
     volumes:
-      - ./docker-workshop/student:/workspace
+      - ./.workshop:/workspace
       # The previous Alpine environment cannot load Debian native extensions.
       # Keep its volume intact; the workbench has its own reproducible environment.
       - workbench-venv:/opt/student/.venv
       - code-server-data:/opt/code-server
     environment:
+      WORKSHOP_PREVIEW_FILE: /tmp/workshop-preview
       AGENT_API_KEY: ${AGENT_API_KEY:-}
       AGENT_BASE_URL: ${AGENT_BASE_URL:-}
       AGENT_MODEL: ${AGENT_MODEL:-gpt-5}
       AGENT_MAX_ITERS: ${AGENT_MAX_ITERS:-25}
       AGENT_REQUEST_TIMEOUT: ${AGENT_REQUEST_TIMEOUT:-90}
       AGENT_AUTO_APPROVE: ${AGENT_AUTO_APPROVE:-}
-      AGENT_VERBOSE: ${AGENT_VERBOSE:-}
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8081/api/health >/dev/null && curl -fsS http://localhost:7681/terminal/ >/dev/null && curl -fsS http://localhost:8080/healthz >/dev/null"]
       interval: 5s
@@ -39,6 +39,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  student-venv:
   workbench-venv:
   code-server-data:

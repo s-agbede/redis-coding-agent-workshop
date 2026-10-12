@@ -1,5 +1,4 @@
 from io import StringIO
-from pathlib import Path
 
 import pytest
 from rich.console import Console
@@ -11,101 +10,71 @@ import ui
 def output(monkeypatch: pytest.MonkeyPatch) -> StringIO:
     stream = StringIO()
     monkeypatch.setattr(ui, "console", Console(file=stream, force_terminal=False, width=100))
-    monkeypatch.setattr(ui, "VERBOSE", False)
     return stream
 
 
-def test_failed_command_shows_status_and_output_without_success_tick(output: StringIO) -> None:
-    run = ui.wrap_registry({"run_bash": lambda **_: "exit 3\nCheck failed [fixture]"}, set())
-    assert run["run_bash"](command="python check.py") == "exit 3\nCheck failed [fixture]"
+def test_checkpoint_turn_display_groups_requests_and_literal_observations(output: StringIO) -> None:
+    ui.show_turn(2)
+    ui.show_tool_request("read-2", "read_file", '{"path":"[bold]notes.md", "offset":81}')
+    ui.show_tool_result("read-2", "81: [bold]literal[/bold]\n82: next line")
+    ui.show_answer("The file says **ready**.")
     shown = output.getvalue()
-    assert "exit 3" in shown
-    assert "Check failed [fixture]" in shown
-    assert "✓" not in shown
+    assert "Model turn 2" in shown
+    assert "REQUEST read-2" in shown
+    assert '"offset": 81' in shown
+    assert "[bold]notes.md" in shown
+    assert "RESULT read-2" in shown
+    assert "81: [bold]literal[/bold]" in shown
+    assert "82: next line" in shown
+    assert "characters, not tokens" in shown
+    assert "Answer" in shown
 
 
-def test_successful_command_shows_exit_status(output: StringIO) -> None:
-    run = ui.wrap_registry({"run_bash": lambda **_: "exit 0\n9/9 checks passed"}, set())
-    run["run_bash"](command="python check.py")
-    assert "exit 0" in output.getvalue()
-    assert "9/9 checks passed" in output.getvalue()
+def test_malformed_tool_arguments_remain_visible(output: StringIO) -> None:
+    ui.show_tool_request("bad", "read_file", "{not json}")
+    assert "{not json}" in output.getvalue()
 
 
-def test_tool_exception_is_visible_and_still_reaches_the_loop(output: StringIO) -> None:
-    def missing(**_: str) -> str:
-        raise FileNotFoundError("missing.txt")
+@pytest.mark.parametrize("fenced", [False, True], ids=["plain-code", "markdown-code"])
+def test_answer_preserves_code_lines_and_indentation(output: StringIO, fenced: bool) -> None:
+    code = 'def fizzbuzz():\n    result = []\n    for n in range(1, 16):\n        result.append(str(n))\n    return result'
+    answer = f"Here is the function:\n\n```python\n{code}\n```" if fenced else code + "\n\nExample:\nprint(fizzbuzz())\n# Example output"
 
-    run = ui.wrap_registry({"read_file": missing}, set())
-    with pytest.raises(FileNotFoundError):
-        run["read_file"](path="missing.txt")
-    assert "missing.txt" in output.getvalue()
-    assert "failed" in output.getvalue().lower()
+    ui.show_answer(answer)
+
+    # Ignore the panel frame, but keep all leading whitespace inside it.
+    lines = [line[3:-3].rstrip() for line in output.getvalue().splitlines() if line.startswith("│")]
+    first_line = next(line for line in lines if "def fizzbuzz():" in line)
+    padding = " " * first_line.index("def fizzbuzz():")
+    for code_line in code.splitlines():
+        assert padding + code_line in lines
+    if not fenced:
+        assert "# Example output" in lines
+
+
+def test_plain_answer_keeps_literal_markup_and_spacing(output: StringIO) -> None:
+    ui.show_answer("First line\n    [bold]literal[/bold]\nLast line")
+    shown = output.getvalue()
+    assert "    [bold]literal[/bold]" in shown
+    assert "First line     " in shown
+
+
+@pytest.mark.parametrize("choice,expected", [("y", True), ("n", False)])
+def test_command_approval_requires_explicit_response(output, monkeypatch, choice, expected):
+    monkeypatch.delenv("AGENT_AUTO_APPROVE", raising=False)
+    monkeypatch.setattr(ui.Prompt, "ask", lambda *args, **kwargs: choice)
+    assert ui.approve_command("pytest -q") is expected
+    assert "pytest -q" in output.getvalue()
+
+
+def test_explicit_headless_approval_does_not_prompt(monkeypatch):
+    monkeypatch.setenv("AGENT_AUTO_APPROVE", "1")
+    monkeypatch.setattr(ui.Prompt, "ask", lambda *a, **kw: pytest.fail("Unexpected prompt"))
+    assert ui.approve_command("pytest -q")
+
+
+def test_command_result_is_displayed_once_without_changing_exit_status(output):
+    ui.show_tool_result("check", "exit 3\nCheck failed [fixture]")
+    assert output.getvalue().count("Check failed [fixture]") == 1
+    assert "exit 3" in output.getvalue()
     assert "✓" not in output.getvalue()
-
-
-def test_denied_command_never_runs(output: StringIO, monkeypatch: pytest.MonkeyPatch) -> None:
-    def forbidden(**_: str) -> str:
-        pytest.fail("Denied command executed")
-
-    monkeypatch.setattr(ui.Prompt, "ask", lambda *a, **kw: "n")
-    run = ui.wrap_registry({"run_bash": forbidden}, {"run_bash"}, ui.Approvals(auto=False))
-    assert "declined" in run["run_bash"](command="anything")
-    assert "✓" not in output.getvalue()
-
-
-@pytest.mark.parametrize("verbose", [False, True])
-def test_reader_observation_is_complete_only_in_verbose_mode(
-    output: StringIO, monkeypatch: pytest.MonkeyPatch, verbose: bool,
-) -> None:
-    from solutions.tools import read_file
-
-    monkeypatch.setattr(ui, "VERBOSE", verbose)
-    path = Path(__file__).resolve().parents[1] / "checkpoints/release_log.md"
-    expected = read_file(str(path), offset=170, limit=20)
-    assert len(expected) > 200
-    run = ui.wrap_registry({"read_file": read_file}, set())
-
-    result = run["read_file"](path=str(path), offset=170, limit=20)
-
-    assert result == expected
-    shown = output.getvalue()
-    assert "Reading" in shown
-    if verbose:
-        assert expected in shown
-        assert "180: Release decision: Cedar is ready" in shown
-        assert "continue with offset=190" in shown
-    else:
-        assert "170: Entry" not in shown
-        assert "180: Release decision" not in shown
-        assert "continue with offset=190" not in shown
-
-
-def test_verbose_observation_is_literal_and_returned_unchanged(
-    output: StringIO, monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(ui, "VERBOSE", True)
-    monkeypatch.setattr(ui, "console", Console(file=output, force_terminal=True, width=100))
-    observation = "\n".join(f'[bold]line {number}[/bold] {{"ready": true}}' for number in range(20))
-    run = ui.wrap_registry({"list_files": lambda **_: observation}, set())
-
-    result = run["list_files"](path=".")
-
-    assert result is observation
-    assert observation in output.getvalue()
-
-
-@pytest.mark.parametrize("verbose", [False, True])
-def test_command_observation_keeps_its_labelled_output_tail(
-    output: StringIO, monkeypatch: pytest.MonkeyPatch, verbose: bool,
-) -> None:
-    monkeypatch.setattr(ui, "VERBOSE", verbose)
-    observation = "exit 0\ndiscarded start\n" + "\n".join(f"output line {number}: {'x' * 60}" for number in range(30))
-    run = ui.wrap_registry({"run_bash": lambda **_: observation}, set())
-
-    result = run["run_bash"](command="python check.py")
-
-    assert result is observation
-    shown = output.getvalue()
-    assert "exit 0\n… [showing output tail]" in shown
-    assert "discarded start" not in shown
-    assert observation[-1200:] in shown

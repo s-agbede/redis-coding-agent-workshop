@@ -26,17 +26,17 @@ test('Python code survives Markdown rendering without losing indentation or **kw
   assert.ok(!html.includes('<br>'))
 })
 
-test('the seven lessons follow the agreed learning order and link to existing exercise files', async () => {
+test('the six lessons follow the agreed learning order and link to existing exercise files', async () => {
   const manifest = await readFile(new URL('../public/build-steps/manifest.yaml', import.meta.url), 'utf8')
   const names = [...manifest.matchAll(/- file: (.+)/g)].map(match => match[1])
-  assert.deepEqual(names, ['01-first-call.md', '02-peas.md', '03-conversation.md', '04-one-tool.md', '05-better-tools.md', '06-agent-loop.md', '07-capstone.md'])
+  assert.deepEqual(names, ['01-first-call.md', '03-conversation.md', '06-agent-loop.md', '04-one-tool.md', '05-better-tools.md', '07-capstone.md'])
   for (const name of names) {
     const lesson = await readFile(new URL('../public/build-steps/' + name, import.meta.url), 'utf8')
     assert.ok(!lesson.includes('/vscode/'))
     const path = lesson.match(/^editorFile: (.+)$/m)?.[1]
-    if (name === '02-peas.md') continue
+    assert.equal(path, 'agent.py')
     assert.ok(path, `${name} needs an editor file`)
-    await readFile(new URL('../../student/' + path, import.meta.url), 'utf8')
+    await readFile(new URL('../../../' + path, import.meta.url), 'utf8')
   }
 })
 
@@ -87,4 +87,19 @@ test('emphasis can wrap a safe image while its alt text remains escaped literal 
     renderMarkdown('**Map: ![**literal** "<svg>"](/images/agent-map.svg)**'),
     '<p><strong>Map: <img src="/images/agent-map.svg" alt="**literal** &quot;&lt;svg&gt;&quot;" loading="lazy"></strong></p>'
   )
+})
+
+
+test('welcome content defaults to 90 minutes when duration metadata is missing', async () => {
+  const originalFetch = globalThis.fetch
+  const originalWindow = globalThis.window
+  globalThis.window = { location: { pathname: '/guide/' } }
+  globalThis.fetch = async () => new Response('# Welcome')
+  try {
+    const { loadWelcomeContent } = await import('../src/utils/pageContent.js')
+    assert.equal((await loadWelcomeContent()).estimatedMinutes, 90)
+  } finally {
+    globalThis.fetch = originalFetch
+    globalThis.window = originalWindow
+  }
 })

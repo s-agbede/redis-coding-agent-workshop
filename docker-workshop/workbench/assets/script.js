@@ -572,5 +572,34 @@ function setupPanelMessageHandlers() {
   });
 }
 
+// Keep the visible app in step with a presenter starting or exiting demo.py.
+let previewRevision = null;
+async function refreshPreviewSelection() {
+  try {
+    const response = await fetch('/api/preview', { cache: 'no-store' });
+    if (!response.ok) return;
+    const selection = await response.json();
+    const panel = document.getElementById('panel-app');
+    panel.querySelector('.panel-title').textContent = selection.mode === 'demo' ? 'App Preview · Demo' : 'App Preview';
+    if (previewRevision !== selection.revision && (previewRevision !== null || selection.mode === 'demo')) {
+      if (selection.mode === 'demo') {
+        panelState.app.visible = true;
+        maximizedPanelId = null;
+        updatePanelVisibility();
+        buildMenu();
+      }
+      const loading = panel.querySelector('.panel-loading');
+      loading.classList.remove('hidden');
+      loadPanelWithRetry(loading);
+    }
+    previewRevision = selection.revision;
+  } catch (error) {
+    // A runtime restart is retried on the next poll.
+    console.debug('Preview status unavailable', error);
+  }
+}
+
 // Initialize when DOM is ready
 init();
+refreshPreviewSelection();
+setInterval(refreshPreviewSelection, 2000);

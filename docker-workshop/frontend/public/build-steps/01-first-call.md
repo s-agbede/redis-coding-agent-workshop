@@ -1,9 +1,8 @@
 ---
 title: Make your first model call
-editorFile: first_call.py
+editorFile: agent.py
 ---
-
-**7 minutes.** We will start by asking a model to write FizzBuzz. Before connecting the code, let's separate three things that are easy to mix up.
+**9 minutes.** We will start by asking a model to write FizzBuzz. Before connecting the code, let's separate three things that are easy to mix up.
 
 ## The model, the API and the SDK
 
@@ -23,58 +22,81 @@ Your instructor provides the API access for this workshop: the **key** authorize
 
 We use text messages here, although models can support other input and output types. Sending a request uses the trained model; it does not retrain its weights.
 
+## One file, one program
+
+Throughout this workshop you will edit **agent.py**. The supplied **main.py** imports your functions and runs the terminal session. Start the same program after each saved change:
+
+```bash
+uv run python main.py
+```
+
+The supplied terminal asks for your question. Try this:
+
+```text
+Write a Python function that returns FizzBuzz for integers 1 to 15.
+```
+
+The starter tells you `Implement ask in agent.py` and returns to the shell. That is the missing connection you will build now. No model reply has been substituted.
+
 ## Connect the request
 
-Open **first_call.py** in Code. The supplied `FIZZBUZZ_PROMPT` asks for a Python function that returns FizzBuzz for 1–15. The program already creates an SDK client and will print the answer. You will complete the small `ask(client, prompt)` function between those steps.
+Open **agent.py**. Complete `ask(client, messages, tool_schemas)`: send `MODEL` and the supplied `messages` to `client.chat.completions.create`, then return `response.choices[0].message`.
 
-1. Put `prompt` in a user message: `{"role": "user", "content": prompt}`.
-2. Send that message list with `client.chat.completions.create`, passing `MODEL` and `messages`.
-3. Return `response.choices[0].message.content`, or an empty string if content is absent.
+The terminal already builds a user message from what you type. `user` is your input; `assistant` is the model's reply; a `system` message supplies instructions. Keep the **whole assistant message**, because later it can contain requested tool calls as well as `.content` text.
 
-`user` identifies the person's input; the response is an `assistant` message. `choices[0]` selects the first returned choice, and `.content` holds its text.
+We build outgoing user and tool messages as ordinary dictionaries, accessed with keys such as `message["content"]`. The SDK returns the assistant message as an object, accessed with attributes such as `assistant_message.content` and `assistant_message.tool_calls`. The SDK accepts both forms in the next request, so we can keep the returned object in our history.
 
-<details>
-<summary>Hint</summary>
+`ui.show_request` displays the messages' count and roles; the `with` block shows a spinner while the API call runs. Both are supplied display helpers. The SDK request itself is visible in your function.
 
-The SDK accepts named arguments `model=MODEL` and `messages=messages`. Returning the answer lets the caller decide what to do with it.
-
-</details>
+The empty `TOOL_SCHEMAS` list means we are asking for text. This list holds descriptions of tools, not the Python functions themselves. The SDK names its request argument `tools`; our variable is named `tool_schemas` to make the distinction clear. The supplied `options` line in our answer omits an empty tools argument; later, the same request can advertise available functions.
 
 <details>
 <summary>Copyable solution — replace the whole ask function</summary>
 
 ```python
-def ask(client: Any, prompt: str) -> str:
-    messages = [{"role": "user", "content": prompt}]
-    response = client.chat.completions.create(model=MODEL, messages=messages)
-    return response.choices[0].message.content or ""
+def ask(client: Any, messages: list[Any], tool_schemas: list[dict[str, Any]]) -> Any:
+    # An empty schema list is omitted: the first lesson is a text-only request.
+    options = {"tools": tool_schemas} if tool_schemas else {}
+    ui.show_request(messages)
+    with ui.console.status("Thinking…", spinner="dots"):
+        response = client.chat.completions.create(
+            model=MODEL, messages=messages, **options,
+        )
+    return response.choices[0].message
 ```
 
 </details>
 
-## Run your first call
-
-Save with **Ctrl/Cmd+S**, then select **Run code** below. The command runs in the visible **Terminal**. It uses the FizzBuzz prompt in your source file; you do not need to type it again.
+Save with **Ctrl/Cmd+S**, start the same command again, and ask the FizzBuzz question. The request preview shows the count and roles of the messages sent; the **Answer** panel shows what the model returned. The preview is supplied tracing, not a simulated model reply.
 
 ```bash
-uv run python first_call.py
+uv run python main.py
 ```
 
-Read the response. You should receive Python code, then return to the shell. Does its order of checks handle multiples of both 3 and 5? The program has printed generated code; it has not executed that code.
+Does the generated code check multiples of both 3 and 5 correctly? It is text in a response; your program has not executed it.
 
-You now have one model call. An **agent** adds a **harness**: the program that supplies context, executes tools and decides when to ask the model again. We will build those capabilities one at a time.
+An **agent** adds a **harness**: our program supplies context, executes tools and decides when to ask the model again. You will grow this same program one capability at a time. `main.py` handles the terminal and connection setup; `ui.py` handles display. Your learning work stays in **agent.py**.
 
-For an API error, show the error to your instructor. Once the call works, try explaining where the response came from:
-
-**Quick question:** which part generated the FizzBuzz code, and which part displayed it?
+**Predict:** if you now ask “Now change it to stop at 20”, will the next request include the earlier code? Keep this chat open for the next lesson.
 
 <details>
-<summary>Compare your answer</summary>
+<summary>Which part generated the answer?</summary>
 
-The GPT model generated the response. The API returned it, the SDK exposed it as a Python object, and our Python program printed its text. The generated FizzBuzz function still has not run.
+The GPT model generated the response. The API returned it, the SDK exposed the message as a Python object, and our terminal displayed its text. A plausible answer still needs checking.
 
 </details>
 
-Can your program now handle **“Now change it to stop at 20”**? Keep your prediction in mind. After a short design discussion, we will try that exact follow-up and inspect what the program sends.
+For authentication or connection failures, show your instructor the error. Do not paste credentials into chat.
 
-Optional reading: [OpenAI Chat Completions](https://developers.openai.com/api/reference/chat-completions/overview).
+<details>
+<summary>Catch up if needed</summary>
+
+Save your attempt separately first. After typing `exit` to leave the chat, this copies the complete learner file **through this lesson**, including the earlier exercises:
+
+```bash
+cp solutions/steps/01-model.py agent.py
+```
+
+Restart with `uv run python main.py`. Refresh the open editor file after copying, before saving over it. This is an explicit replacement of your work, not an automatic fallback.
+
+</details>

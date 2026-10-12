@@ -1,23 +1,17 @@
 <template>
-  <div class="workshop-build" :class="{ 'workshop-build--expanded': expandedPanel, 'workshop-build--guide': guideMode }">
+  <div class="workshop-build">
     <WorkshopHeader
-      :hub-url="guideMode ? '/guide/' : '/'"
-      :hidden="!!expandedPanel"
+      :hub-url="homeUrl"
       title="Build a coding agent"
-      :steps="phaseSteps"
-      :current-step="currentPhaseIndex"
+      :steps="['Welcome', 'Workshop']"
+      :current-step="2"
       :clickable="true"
       @step-click="navigateToPhase"
     />
 
     <main class="build-layout">
       <!-- Left panel: Instructions with Steps -->
-      <div ref="instructions" class="build-instructions" :hidden="!!expandedPanel && expandedPanel !== 'instructions'" :style="guideMode ? {} : { flexBasis: `${instructionsPercent}%` }">
-        <div v-if="!guideMode" class="instructions-toolbar">
-          <span>Instructions</span>
-          <PanelToggle label="instructions" :expanded="expandedPanel === 'instructions'" @toggle="expandedPanel = expandedPanel === 'instructions' ? null : 'instructions'" />
-        </div>
-        
+      <div ref="instructions" class="build-instructions">
         <!-- Loading State -->
         <div v-if="loadingSteps" class="loading-state">
           <p>Loading lessons...</p>
@@ -96,24 +90,6 @@
         </template>
       </div>
 
-      <!-- Resize Handle -->
-      <PanelDivider v-if="!guideMode" v-model:value="instructionsPercent" class="workspace-divider" :hidden="!!expandedPanel" orientation="vertical" label="Resize instructions and workspace" />
-
-      <!-- Right panel: Code Editor + App Preview -->
-      <div v-if="!guideMode" class="build-interactive-panel" :hidden="expandedPanel === 'instructions'">
-        <BuildPanel
-          ref="workspace"
-          :expanded-panel="expandedPanel"
-          @expand="expandedPanel = $event"
-          :language="selectedLanguage"
-          :selected-file="selectedFile"
-          @file-change="selectedFile = $event"
-          @files-loaded="filePaths = $event"
-          :app-url="appUrl"
-          :app-title="appTitle"
-          :default-editor-percent="editorPercent"
-        />
-      </div>
     </main>
   </div>
 </template>
@@ -121,52 +97,28 @@
 <script>
 import WorkshopHeader from '@redis-workshop/components/components/WorkshopHeader.vue'
 import { loadAllBuildSteps, markdownToHtml } from '../utils/buildSteps'
-import { loadWorkshopConfig, getPhaseStepTitles, getEnabledPhases, isPhaseEnabled } from '../utils/workshopConfig'
-import BuildPanel from '../components/BuildPanel.vue'
-import PanelToggle from '../components/PanelToggle.vue'
-import PanelDivider from '../components/PanelDivider.vue'
 import LessonContent from '../components/LessonContent.vue'
 import { getBasePath } from '../utils/basePath'
 
 export default {
   name: 'WorkshopBuild',
-  components: {
-    WorkshopHeader,
-    BuildPanel,
-    PanelToggle,
-    PanelDivider,
-    LessonContent
-  },
+  components: { WorkshopHeader, LessonContent },
   data() {
     return {
-      config: null,
-      phaseSteps: ['Welcome', 'Workshop'],
-      enabledPhases: [],
-      currentPhaseIndex: 2,
-      // Build steps from markdown files
+      homeUrl: `${getBasePath()}/`,
       buildSteps: [],
       currentBuildStep: 0,
       visitedSteps: [],
       navigationError: '',
-      guideMode: getBasePath() === '/guide' || /^\/guide(?:\/|$)/.test(window.location?.pathname || ''),
       fileListError: '',
-      loadingSteps: true,
-      stepsError: null,
-      // Resize state
-      instructionsPercent: 50,
-      expandedPanel: null,
-      // Panel configuration
-      selectedLanguage: 'python',
-      selectedFile: 'first_call.py',
       filePaths: [],
-      appUrl: '/app/',
-      appTitle: 'Task-list app',
-      editorPercent: 70
+      loadingSteps: true,
+      stepsError: null
     }
   },
   computed: {
     terminalAvailable() {
-      return !this.guideMode || window.parent !== window
+      return !!window.parent && window.parent !== window
     },
     currentStep() {
       return this.buildSteps[this.currentBuildStep] || { title: '', content: '' }
@@ -176,14 +128,10 @@ export default {
     }
   },
   methods: {
-    async showTerminal() {
-      if (this.guideMode) {
-        if (window.parent !== window) window.parent.postMessage({ type: 'show-workshop-terminal' }, window.location.origin)
-        return
+    showTerminal() {
+      if (this.terminalAvailable) {
+        window.parent.postMessage({ type: 'show-workshop-terminal' }, window.location.origin)
       }
-      this.expandedPanel = null
-      await this.$nextTick()
-      this.$refs.workspace?.showTerminal()
     },
     async loadGuideFiles() {
       try {
@@ -197,30 +145,22 @@ export default {
         this.fileListError = 'Could not load workspace files. You can still read the lessons.'
       }
     },
-    async openFile(path) {
-      if (this.guideMode) {
-        if (window.parent === window) {
-          this.navigationError = 'Open the workbench using the link above to view and edit files.'
-          return false
-        }
-        if (!this.filePaths.includes(path)) {
-          this.navigationError = 'This file is not available in the workspace.'
-          this.fileListError = 'Retry the file list if files have changed.'
-          return false
-        }
-        this.navigationError = ''
-        window.parent.postMessage({ type: 'open-workshop-file', path }, window.location.origin)
-        return true
+    openFile(path) {
+      if (!this.terminalAvailable) {
+        this.navigationError = 'Open the workbench using the link above, then use its Code panel to edit files in VS Code.'
+        return false
       }
-      if (this.expandedPanel !== 'editor') this.expandedPanel = null
-      await this.$nextTick()
-      return this.$refs.workspace?.openFile(path)
+      if (!this.filePaths.includes(path)) {
+        this.navigationError = 'This file is not available in the workspace.'
+        this.fileListError = 'Retry the file list if files have changed.'
+        return false
+      }
+      this.navigationError = ''
+      window.parent.postMessage({ type: 'open-workshop-file', path }, window.location.origin)
+      return true
     },
     navigateToPhase(step) {
-      const phase = this.enabledPhases[step - 1]
-      if (phase) {
-        this.$router.push(phase.route)
-      }
+      this.$router.push(step === 1 ? '/' : '/build')
     },
     async goToStep(index) {
       if (index < 0 || index >= this.buildSteps.length) return
@@ -228,88 +168,25 @@ export default {
       if (!this.visitedSteps.includes(index)) this.visitedSteps.push(index)
       try { sessionStorage.setItem('coding-agent-workshop-lesson-v3', this.currentStep.file) }
       catch { this.navigationError = 'Your current lesson cannot be saved in this browser. Navigation still works.' }
-      this.selectedFile = this.currentStep.editorFile || this.selectedFile
-      await this.focusLesson()
-    },
-    async focusLesson() {
       await this.$nextTick()
       this.$refs.stepHeading?.focus({ preventScroll: true })
       if (this.$refs.instructions) this.$refs.instructions.scrollTop = 0
-      // The embedded guide and responsive layout both scroll the document.
-      if (this.guideMode || window.matchMedia?.('(max-width: 900px)').matches) {
-        this.$refs.stepHeading?.scrollIntoView({ block: 'start' })
-      }
+      this.$refs.stepHeading?.scrollIntoView({ block: 'start' })
     },
-    nextStep() {
-      if (this.currentBuildStep < this.buildSteps.length - 1) {
-        this.goToStep(this.currentBuildStep + 1)
-      }
-    },
-    prevStep() {
-      if (this.currentBuildStep > 0) {
-        this.goToStep(this.currentBuildStep - 1)
-      }
-    },
-    restorePanel(event) {
-      if (event.key === 'Escape') this.expandedPanel = null
-    }
+    nextStep() { this.goToStep(this.currentBuildStep + 1) },
+    prevStep() { this.goToStep(this.currentBuildStep - 1) }
   },
-  beforeUnmount() { document.removeEventListener('keydown', this.restorePanel) },
   async mounted() {
-    document.addEventListener('keydown', this.restorePanel)
-    if (this.guideMode) void this.loadGuideFiles()
-    // Load workshop config
-    try {
-      this.config = await loadWorkshopConfig()
-      
-      // Redirect if build phase is disabled
-      if (!isPhaseEnabled(this.config, 'build')) {
-        this.$router.replace('/')
-        return
-      }
-      
-      this.phaseSteps = getPhaseStepTitles(this.config)
-      this.enabledPhases = getEnabledPhases(this.config)
-      this.currentPhaseIndex = this.enabledPhases.findIndex(p => p.id === 'build') + 1
-      
-      // Set panel width from config
-      if (this.config.buildPanel?.defaultWidth) {
-        this.instructionsPercent = Math.max(20, Math.min(80, 100 * (1 - this.config.buildPanel.defaultWidth / window.innerWidth)))
-      }
-
-      // Load App URL and title from config
-      if (this.config.buildPanel?.appUrl) {
-        this.appUrl = this.config.buildPanel.appUrl
-      }
-      if (this.config.buildPanel?.appTitle) {
-        this.appTitle = this.config.buildPanel.appTitle
-      }
-      if (this.config.buildPanel?.editorPercent) {
-        this.editorPercent = this.config.buildPanel.editorPercent
-      }
-    } catch (err) {
-      console.warn('Failed to load workshop config:', err)
-    }
-
-    // Load build steps
+    if (this.terminalAvailable) void this.loadGuideFiles()
     try {
       this.buildSteps = await loadAllBuildSteps()
       let storedStep = 0
       try { storedStep = this.buildSteps.findIndex(step => step.file === sessionStorage.getItem('coding-agent-workshop-lesson-v3')) }
       catch { this.navigationError = 'Your current lesson cannot be saved in this browser. Navigation still works.' }
       this.loadingSteps = false
-      await this.goToStep(Number.isInteger(storedStep) && storedStep >= 0 && storedStep < this.buildSteps.length ? storedStep : 0)
+      await this.goToStep(storedStep >= 0 ? storedStep : 0)
     } catch (err) {
       this.stepsError = err.message
-      // Fallback steps if loading fails
-      this.buildSteps = [
-        {
-          id: 'fallback',
-          title: 'Build Step',
-          content: 'Failed to load build steps. Please check that the build-steps folder contains a manifest.yaml file.',
-          action: null
-        }
-      ]
     } finally {
       this.loadingSteps = false
     }
@@ -318,34 +195,8 @@ export default {
 </script>
 
 <style scoped>
-.workshop-build {
-  height: 100vh;
-  min-height: 600px;
-  background: #1a1a2e;
-  display: flex;
-  flex-direction: column;
-}
-
-.build-layout {
-  min-height: 0;
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-  position: relative;
-}
-
-.build-instructions {
-  min-width: 0;
-  padding: 1.5rem;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-}
-.workshop-build [hidden] { display: none !important; }
-.workshop-build--guide { height: auto; min-height: 100vh; }
-.workshop-build--guide .build-layout { display: block; overflow: visible; }
-.workshop-build--guide .build-instructions { width: 100%; overflow: visible; padding: 1rem; }
-.instructions-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; font-size: .85rem; color: #cbd5e0; }
+.workshop-build { min-height: 100vh; background: #1a1a2e; }
+.build-instructions { padding: 1rem; }
 
 .loading-state,
 .error-state {
@@ -587,24 +438,5 @@ export default {
   font-size: 0.875rem;
 }
 
-/* Right Panel */
-.build-interactive-panel {
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
 .open-file { margin-bottom: 1rem; padding: .5rem .75rem; border: 1px solid #7aa2f7; border-radius: 4px; background: #1e2030; color: #c0caf5; cursor: pointer; }
-@media (max-width: 900px) {
-  .workshop-build { height: auto; }
-  .build-layout { flex-direction: column; }
-  .build-instructions { width: 100%; flex-basis: auto !important; }
-  .build-interactive-panel { width: 100%; flex: none; height: 750px; }
-  .workspace-divider { display: none; }
-}
-.workshop-build--expanded { position: fixed; inset: 0; z-index: 100; height: 100vh; height: 100dvh; min-height: 0; }
-.workshop-build--expanded .build-instructions,
-.workshop-build--expanded .build-interactive-panel { flex: 1; width: 100%; height: 100%; min-height: 0; }
-.workshop-build--expanded .instructions-toolbar { position: sticky; top: -1.5rem; margin-top: -1.5rem; padding: .75rem 0; background: #1a1a2e; z-index: 1; }
 </style>

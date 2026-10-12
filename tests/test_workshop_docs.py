@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LESSONS = (
     "01-first-call.md",
-    "02-peas.md",
     "03-conversation.md",
+    "06-agent-loop.md",
     "04-one-tool.md",
     "05-better-tools.md",
-    "06-agent-loop.md",
     "07-capstone.md",
 )
 
@@ -72,7 +72,7 @@ def test_published_lesson_manifest_and_mirrors() -> None:
         return
     manifest = (public / "manifest.yaml").read_text()
     assert tuple(re.findall(r"^\s+- file: (\S+)$", manifest, re.MULTILINE)) == LESSONS
-    mirrors = (ROOT / "docker-workshop/student/docs/tasks", ROOT / "docker-workshop/docs/tasks", public)
+    mirrors = (ROOT / "docker-workshop/docs/tasks", public)
     for name in LESSONS:
         expected = without_frontmatter((ROOT / "docs/tasks" / name).read_text())
         for mirror in mirrors:
@@ -82,3 +82,12 @@ def test_published_lesson_manifest_and_mirrors() -> None:
             assert actual == expected, mirror / name
         for editor_file in re.findall(r"^editorFile: (.+)$", (public / name).read_text(), re.MULTILINE):
             assert (ROOT / editor_file).is_file(), (name, editor_file)
+
+
+def test_worked_reader_schema_matches_the_actual_tool_contract() -> None:
+    from tools import PLAIN_READ_SCHEMA
+
+    lesson = (ROOT / "docs/tasks/06-agent-loop.md").read_text()
+    examples = re.findall(r"```json\n(.*?)```", lesson, re.DOTALL)
+    assert examples, "The tool walkthrough must show the contract it explains"
+    assert json.loads(examples[0]) == PLAIN_READ_SCHEMA

@@ -11,7 +11,7 @@ def test_records_reply_and_stops_when_model_requests_no_tools():
     client = FakeClient([text("hello there")])
     messages = [{"role": "user", "content": "hi"}]
 
-    result = run_agent(client, messages, tools=[], registry={})
+    result = run_agent(client, messages, tool_schemas=[], registry={})
 
     # The assistant's reply is recorded in the conversation...
     assert result[-1].content == "hello there"
@@ -33,7 +33,7 @@ def test_executes_requested_tool_and_appends_result():
     ])
     messages = [{"role": "user", "content": "read foo.py"}]
 
-    result = run_agent(client, messages, tools=[], registry={"read_file": read_file})
+    result = run_agent(client, messages, tool_schemas=[], registry={"read_file": read_file})
 
     # The tool ran with the parsed arguments.
     assert seen["path"] == "foo.py"
@@ -56,7 +56,7 @@ def test_loops_across_multiple_tool_rounds_until_model_stops():
     ])
     messages = [{"role": "user", "content": "go"}]
 
-    result = run_agent(client, messages, tools=[], registry={"noop": noop})
+    result = run_agent(client, messages, tool_schemas=[], registry={"noop": noop})
 
     assert len(client.calls) == 3  # two tool rounds + the final answer
     assert result[-1].content == "all done"
@@ -70,7 +70,7 @@ def test_stops_at_iteration_cap_when_model_never_finishes():
     client = FakeClient([tool_turn((f"c{i}", "noop", {})) for i in range(3)])
     messages = [{"role": "user", "content": "go"}]
 
-    run_agent(client, messages, tools=[], registry={"noop": noop}, max_iters=3)
+    run_agent(client, messages, tool_schemas=[], registry={"noop": noop}, max_iters=3)
 
     assert len(client.calls) == 3  # bounded by max_iters, did not exceed
 
@@ -89,7 +89,7 @@ def test_runs_all_tool_calls_in_a_single_turn_before_next_model_call():
     ])
     messages = [{"role": "user", "content": "go"}]
 
-    result = run_agent(client, messages, tools=[], registry={"rec": rec})
+    result = run_agent(client, messages, tool_schemas=[], registry={"rec": rec})
 
     assert order == ["first", "second"]
     assert [r["tool_call_id"] for r in tool_messages(result)] == ["a", "b"]
@@ -111,7 +111,7 @@ def test_dispatches_to_the_named_tool_with_parsed_args():
     messages = [{"role": "user", "content": "go"}]
 
     result = run_agent(
-        client, messages, tools=[], registry={"adder": adder, "shouter": shouter}
+        client, messages, tool_schemas=[], registry={"adder": adder, "shouter": shouter}
     )
 
     assert tool_messages(result)[0]["content"] == "HI"
@@ -129,7 +129,7 @@ def test_tool_error_is_reported_back_instead_of_crashing_the_loop():
     ])
     messages = [{"role": "user", "content": "go"}]
 
-    result = run_agent(client, messages, tools=[], registry={"boom": boom})
+    result = run_agent(client, messages, tool_schemas=[], registry={"boom": boom})
 
     results = tool_messages(result)
     assert results[0]["tool_call_id"] == "c1"
@@ -143,7 +143,7 @@ def test_malformed_arguments_become_feedback_and_allow_another_turn():
         text("I need valid arguments."),
     ])
 
-    result = run_agent(client, [], tools=[], registry={})
+    result = run_agent(client, [], tool_schemas=[], registry={})
 
     assert tool_messages(result)[0]["tool_call_id"] == "bad-json"
     assert tool_messages(result)[0]["content"].startswith("Error:")

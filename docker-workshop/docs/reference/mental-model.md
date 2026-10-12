@@ -17,6 +17,6 @@ The browser workbench provides an editor, Terminal and app preview. The agent ru
 - **Actuators:** file changes and command execution.
 - **Sensors:** file contents, errors and command results returned to the conversation.
 
-The supplied approval wrapper gates shell commands and web fetching. File reads and edits are not gated. Choosing a project directory changes the working directory; it does not isolate the Python process.
+The loop calls a supplied approval helper before executing a shell command. File reads and edits are not gated. Choosing a project directory changes the working directory; it does not isolate the Python process.
 
 Continue with the [first lesson](../tasks/01-first-call.md) or use the [command reference](cheatsheet.md).

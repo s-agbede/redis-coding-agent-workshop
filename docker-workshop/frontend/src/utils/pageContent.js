@@ -73,30 +73,9 @@ export async function loadWelcomeContent() {
     title: metadata.title || 'Workshop',
     subtitle: metadata.subtitle || '',
     description: metadata.description || '',
-    estimatedMinutes: parseInt(metadata.estimatedMinutes) || 30,
+    estimatedMinutes: parseInt(metadata.estimatedMinutes) || 90,
     difficulty: metadata.difficulty || 'Beginner',
     topics: metadata.topics || [],
-    content: content,
-    htmlContent: markdownToHtml(content)
-  }
-}
-
-/**
- * Load review page content from markdown file
- */
-export async function loadReviewContent() {
-  const basePath = getBasePath()
-  const response = await fetch(`${basePath}/review.md`)
-  
-  if (!response.ok) {
-    return null
-  }
-  
-  const text = await response.text()
-  const { metadata, content } = parseFrontMatter(text)
-  
-  return {
-    title: metadata.title || 'Review',
     content: content,
     htmlContent: markdownToHtml(content)
   }

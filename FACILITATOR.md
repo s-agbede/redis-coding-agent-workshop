@@ -4,51 +4,62 @@ Guide the group from one FizzBuzz request to their own working coding agent. Use
 
 ## Prepare before the session
 
-From the repository root, preserve any existing `.env`, configure the model service and run `bash start.sh`. Open http://localhost:8080. Each learner needs an independent stack. Browser edits apply to `docker-workshop/student/`; root files are a separate CLI starter.
+From the repository root, preserve any existing `.env`, configure the model service and run `bash start.sh`. Open http://localhost:8080. Each learner needs an independent stack. The runtime prepares a learner workspace from the root source and preserves browser edits in `.workshop/`. App Preview starts automatically.
 
 The root `docker-compose.yml` is the single deployment configuration. `start.sh` uses root `.env` when present and falls back to an existing `docker-workshop/.env` for older installations. Reuse `bash start.sh` for updates to preserve that configuration selection.
 
 Run `uv run python check_setup.py` in the embedded Terminal. It checks dependencies and configuration presence without contacting the provider or printing credentials. Validate an actual model request separately using completed code in a disposable workspace. After configuration changes, run `bash start.sh --force-recreate` from the repository root; this restarts the workshop, so save learner work first.
 
-Distribute the exercise placeholders and intentionally broken capstone. Do not copy solutions into the learner starter when validating. Rehearse the completed agent against a fresh temporary copy of the app:
+## Opening demo
+
+Run this in the workshop terminal:
 
 ```bash
-uv run python rehearse.py -n 1
+uv run python demo.py
 ```
 
-This makes live model calls, checks the initial app, runs the supplied completed agent and independently checks the outcome. A repaired source is rejected so the rehearsal always begins with the intended bug. Saved runs under `output/rehearsal/` contain the trace, checks and file diff. Use multiple runs to investigate variation; one success is one trial.
+This starts the completed agent and waits for you to type a task. Try:
 
-Rehearsal uses the interactive agent's step budget: 25 by default, configured through `AGENT_MAX_ITERS`. Inspect the saved diff and final checks even when the model's report sounds convincing.
+```text
+Completing a task looks successful, but refreshing makes it incomplete again. Find and fix the bug.
+```
 
-## Teach the seven lessons
+The demo uses a fresh copy of the broken app. App Preview switches to that copy, so you can show the same bug and repair the agent is working on. Shell commands use the normal approval prompts. The demo keeps its files under `output/` for later inspection.
 
-1. **First call, 7m:** explain LLM, GPT model, API and Python SDK before learners implement `ask`. Run `uv run python first_call.py` against the live service. The FizzBuzz prompt already lives in the source; explain the harness after the response. A returned code block is text; no generated code has executed. End by inviting a prediction about “Now change it to stop at 20.”
-2. **PEAS, 5m:** apply the four categories to the promised refresh bug. Give pairs two minutes to propose a design before revealing ours. Performance must include a later read or refresh and preserved existing behavior. Bring it back at evaluation.
-3. **Conversation, 9m:** ask whether the next request contains the earlier code, then run `first_call.py --show-messages --prompt "Now change it to stop at 20."`. Inspect the actual one-message preview before explaining the gap. Learners complete `chat_turn`, start `checkpoints.stage1_chat --show-messages`, and repeat the two-turn exchange. Predict and inspect the second request's user/assistant/user order. A lucky answer does not change what was sent. Shortened previews still forward full content; this is supplied tracing, not a simulated response.
-4. **First tool, 12m:** ask what evidence the chat has about the fictional local brief before submitting its release-name question. Inspect the preview. Explain schema, Python execution and tool result, then implement the plain reader and retry with `checkpoints.stage2_one_tool`. At its pause, ask which function and arguments will execute. Match the requested and returned IDs and compare the answer with the file evidence.
-5. **Better reader, 7m:** read the release log with the plain reader. Have learners locate the decision and inspect the output volume. Before revealing our contract, ask what a shortened result must preserve. Compare selected text, line numbers and continuation. Learners add the helper call and retry the same question with `--paged`. Inspect actual arguments, counts and evidence; neither a model mistake nor context-window exhaustion is required. Let learners decide whether they need another page. Continuation and description experiments are outside the core time budget.
-6. **Loop, 13m:** predict the observations needed to follow the brief's reference, then inspect requests without results in the one-exchange trace. Complete stopping, dispatch and feedback and immediately retry with `AGENT_VERBOSE=1 uv run python main.py`. This displays full returned file excerpts, including their bounds and continuation guidance. Spend a minute on a learner-chosen follow-up; the example distinguishes a release condition from evidence that checks passed. Allow reuse of prior observations. Then introduce supplied editing, errors and command approvals as preparation for the repair. If response latency runs beyond that minute, continue the discussion while it completes and protect the capstone's start.
-7. **Repair and evaluation, 25m:** reproduce the promised bug and ask for a hypothesis before submitting the ticket. After the agent's attempt, learners inspect the changed handler and explain why a later read should now return the updated state. Run the supplied tool, harness and independent application checks, then verify refresh with a fresh task. Unit tests first appear here; explain why harness tests use prepared replies. Close by connecting the learner-built request/history/tool/feedback path to the observed repair.
+Type `exit` when finished; App Preview returns to the unchanged learner app. Start `uv run python main.py` to build the learner agent with the group. No files need swapping or resetting.
 
-Use a two-minute welcome to name the concrete repair destination, then begin building. Keep the ten-minute buffer. Invite a prediction before each comparison and reveal explanations after learners inspect the result. These questions replace recall questions; there is no extra record-keeping task or mandatory closing reflection. Hints and solutions remain available whenever useful.
+## Teach one evolving agent
 
-If the group falls behind, omit optional reader experiments and shorten discussion. Preserve the final independent application check and browser verification. Use catch-up solutions to help learners reach that outcome without consuming the entire final task on syntax errors.
+Use the six-lesson schedule in WORKSHOP.md. Give a two-minute welcome naming the concrete repair destination. All core learner changes go in **agent.py**; `main.py` is supplied terminal/client wiring. Start the same program with `uv run python main.py` after each save.
 
-Aim to start the repair at minute 55. In the loop lesson, protect the first working run and a brief check that learners can explain who executes a requested function and how its result reaches the next model call. If needed, use the inline answers to get there. Keep the supplied-controls explanation short and point back to it when a command approval appears in the capstone.
+1. **Model request, 9m:** explain LLM, OpenAI GPT model, API and SDK before coding. Run the starter and ask FizzBuzz; its explicit missing-request message motivates `ask`. Implement the function, rerun and inspect the response. A code block is text, not executed code.
+2. **History, 9m:** ask “Now change it to stop at 20.” Inspect the request's count/roles before trusting any lucky answer. Remove the reset from `remember`, restart and repeat both prompts. The second request now includes the earlier user and assistant. Restarting clears history.
+3. **Tools and loop, 15m:** integrate a one-minute PEAS design discussion. Advertise supplied `list_files` and unfinished `read_file` by editing `TOOL_SCHEMAS`. Ask “What's the latest release decision?” and observe an unexecuted tool request. Complete stopping, dispatch and matching feedback in `run_agent`. Rerun the same question: discovery succeeds; the actual reader error reaches another model turn. Inspect call/result IDs and discuss unsupported guesses. The learner's own loop powers all later lessons.
+4. **Reader, 10m:** implement UTF-8 reading in the same file, rerun the question and locate supporting evidence. Filenames do not establish contents; the release condition does not establish tests passed. If the model only reads the short brief, ask for support from the log itself.
+5. **Paging, 10m:** propose a bounded observation before revealing ours. Add offset/limit and the supplied helper call, then explicitly replace the plain schema with the paging schema. Rerun the same program/question. The model chooses pages. Compare per-result limits and evidence; do not promise fewer total tokens or a fixed tool sequence.
+6. **Repair/evaluation, 25m:** reproduce the refresh bug and propose a cause. Register supplied actions in agent.py and select `--project capstone`. This changes the workspace, not the implementation. Inspect approvals, errors and actual command results. After the attempt, explain the code change, run the unchanged checker and test a fresh browser task. Connect the observed outcome to PEAS Performance.
 
-## Running the exercises and catching up
+Aim to begin repair at minute 55; keep ten minutes of buffer. Protect the first working loop run and independent final checks. Shorten optional discussion rather than turning the final task into a rushed demo. Ask learners to choose a follow-up and explain what evidence supports it.
 
-Learners save in Code, then select **Run code** on a shell block. This reveals Terminal and submits the command to its existing shell. A successful submission is not proof that the command passed; read the output. **Copy code** is for Python answers, and **Copy text** is for prompts or protocol examples. The learner pastes a prompt into an already-running chat.
+## Present the data flow in code order
 
-Run code needs an idle shell. If a chat is running, type `exit` before starting another command. Use Ctrl+C to interrupt a command when appropriate. Restarting a Python program loads saved edits and clears its in-memory conversation. Run code does not save an unsaved editor buffer.
+Keep one path visible when introducing the harness: **`main()` → `messages` → `ask()` → tool schema → dispatch → feedback → next request**. Start with the imported learner functions in `main.py`, show the history list, then follow the direct SDK call in `agent.py`. Explain once why our user/tool messages are dictionaries while the SDK's assistant reply uses attributes.
 
-All guided model exercises use the real configured service. Provide API access before teaching, and verify it privately; the learner should not need to edit `.env`. If service access fails, diagnose the actual error. Do not substitute a prepared response and present it as a live success. The deterministic clients belong inside the supplied tests, introduced during the final evaluation.
+Before revealing the loop, walk through the illustrative `read_file` call on the lesson page. Point to the schema's name and required path, the JSON arguments string, its decoded dictionary, the registry lookup, and the matching result ID. The unfinished reader's error is a real observation the next request can use. The live question stays natural; do not supply the example filename as part of the task prompt.
 
-Before the conversation follow-up, learners need their completed `first_call.ask`. Before the one-tool checkpoint, they need the plain reader; the full agent needs the improved reader and loop. A test suite can help the instructor diagnose a problem, but there is no separate pytest task in lessons 1–6.
+For paging, trace the small seven-line example before opening the helper. Show `offset - 1`, the selected indexes, and `offset + len(page)`. Ask which line comes next if the character budget allows fewer lines than requested. These short walkthroughs replace explanation during debugging; they are not extra exercises added to the schedule.
 
-Inline answers replace just the relevant function or gap. If needed, learners can preserve their attempt and copy the corresponding completed file from `solutions/`: `first_call.py`, `stage1_chat.py`, `tools.py` or `agent.py`. Copy `stage1_chat.py` into `checkpoints/`. The full tools solution skips the plain-reader stage, so prefer the inline plain-reader answer in lesson 4.
+## Running, inspection and catch-up
 
-If a provider outage blocks the final repair, a manual demonstration can still show how the app and independent checks work. State clearly that this is not a live-agent trial. The supplied `solutions/capstone_app.py` is a final catch-up option after preserving the learner's attempt.
+Run code submits a shell command; it does not save the editor or establish success. Save first, type `exit` to leave the chat, then run again. Ctrl+C interrupts when appropriate. The default request display shows message count and roles alongside separate tool/answer panels. If needed, `AGENT_TRACE_MESSAGES=1` expands request content previews without changing the payload.
+
+The model service is real in every guided exercise. Do not substitute prepared output for an outage. Prepared replies belong only inside evaluator tests. Check configuration privately without displaying credentials.
+
+Inline answers replace one function or the named assignments. For catch-up, preserve the learner's attempt and copy the matching cumulative `solutions/steps/01-model.py` through `06-repair.py` to `agent.py`. Every snapshot includes preceding lessons and leaves later work unfinished. `solutions/agent.py` is the full reference. Neither is loaded automatically. Refresh an open editor buffer after an external copy before saving over it.
+
+The active final tests import learner functions from agent.py. Run the published-snippet replay from the repository root with `uv run pytest tests/test_learning_progression.py -q`; it uses disposable workspaces created from the canonical starter, never replaces learner source, and substitutes only provider transport. Practise the live demo separately with `uv run python demo.py`. The `checkpoints/` directory now contains only the fictional release evidence used by the lessons.
+
+If an outage blocks the final repair, a manual repair and independent check can demonstrate app behavior, but do not claim it was a live agent trial. The supplied `solutions/capstone_app.py` is a final catch-up option after preserving the attempt.
 
 ## Troubleshooting
 
@@ -57,7 +68,7 @@ If a provider outage blocks the final repair, a manual demonstration can still s
 - **Authentication or model errors:** check host `.env` and service configuration privately. Recreate runtime after changes; do not display credentials.
 - **A tool repeats or its result disappears:** inspect the assistant request, matching `tool_call_id` and the next request's messages.
 - **A command is denied:** that denial is feedback. It does not mean the command executed or passed.
-- **Preview is blank or reports 502:** start Uvicorn on `0.0.0.0:8000` using the lesson command. Inspect `/tmp/capstone-preview.log` if needed. Reuse an existing preview server if the port is already occupied.
+- **Preview is blank or reports 502:** reload the panel, then inspect `docker compose logs --tail=100 runtime` on the host. The runtime starts and manages the preview; learners do not need to launch another server.
 - **Tasks disappear during editing:** Uvicorn reload restarted the process and cleared its in-memory store. After repair, create a fresh task, complete it and refresh without editing again.
 - **The agent claims success but checks fail:** use the failed behavior as the next prompt. Keep the independent checker unchanged.
 

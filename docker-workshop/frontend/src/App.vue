@@ -1,17 +1,20 @@
 <template>
   <div id="app">
-    <p v-if="directGuide" class="workbench-link">These are the workshop instructions. <a href="/">Open the workbench</a> to use the editor, terminal and app beside them.</p>
+    <p v-if="directGuide" class="workbench-link">These are the workshop instructions. <a :href="workbenchUrl">Open the workbench</a> to use VS Code, the terminal and app beside them.</p>
     <router-view />
   </div>
 </template>
 
 <script>
-import { getBasePath } from './utils/basePath'
-
 export default {
   name: 'App',
   data() {
-    return { directGuide: getBasePath() === '/guide' && window.parent === window }
+    return {
+      directGuide: window.parent === window,
+      workbenchUrl: process.env.NODE_ENV === 'development'
+        ? (process.env.VUE_APP_API_URL || 'http://localhost:8080') + '/'
+        : '/'
+    }
   }
 }
 </script>

@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
+/opt/student/.venv/bin/python /opt/workshop/prepare_workspace.py /opt/workshop /workspace
 cd /workspace
 uv sync --frozen
 
@@ -38,11 +39,14 @@ ttyd -W -p 7681 --base-path /terminal -t fontSize=13 -t disableLeaveAlert=true \
   tmux -f /etc/tmux.conf attach-session -t workshop &
 terminal_pid=$!
 
+python preview.py &
+preview_pid=$!
+
 cleanup() {
-  kill "$code_pid" "$editor_pid" "$terminal_pid" 2>/dev/null || true
+  kill "$code_pid" "$editor_pid" "$terminal_pid" "$preview_pid" 2>/dev/null || true
   tmux kill-session -t workshop 2>/dev/null || true
 }
 trap cleanup EXIT
 trap 'exit 0' TERM INT
 # Code, editor API and Terminal share one Python environment and lifecycle.
-wait -n "$code_pid" "$editor_pid" "$terminal_pid"
+wait -n "$code_pid" "$editor_pid" "$terminal_pid" "$preview_pid"

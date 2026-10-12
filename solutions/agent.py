@@ -1,60 +1,75 @@
-"""Exercise 5: stopping, dispatch, and feedback complete the agent loop.
+"""Your evolving coding agent. Start it with: uv run python main.py.
 
-Run `AGENT_VERBOSE=1 uv run python main.py` after filling the three gaps.
-The final evaluation lesson includes the supplied loop tests.
-JSON decoding, error-to-text handling, and the step cap are supplied.
-The UI in main.py supplies approval wrappers around run_bash and web_fetch.
+Edit this file throughout the workshop. main.py supplies the terminal session,
+client setup and approval UI; tools.py supplies helpers and the other tools.
 """
 
 import json
 import os
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
+
+import ui
+from tools import (
+    LIST_SCHEMA, PAGED_READ_SCHEMA, PLAIN_READ_SCHEMA,
+    WRITE_FILE_SCHEMA, STR_REPLACE_SCHEMA, RUN_BASH_SCHEMA,
+    file_excerpt, list_files, write_file, str_replace, run_bash,
+)
 
 load_dotenv(dotenv_path=".env")
 MODEL = os.environ.get("AGENT_MODEL", "gpt-5")
 
 
+def ask(client: Any, messages: list[Any], tool_schemas: list[dict[str, Any]]) -> Any:
+    # An empty schema list is omitted: the first lesson is a text-only request.
+    options = {"tools": tool_schemas} if tool_schemas else {}
+    ui.show_request(messages)
+    with ui.console.status("Thinking…", spinner="dots"):
+        response = client.chat.completions.create(
+            model=MODEL, messages=messages, **options,
+        )
+    return response.choices[0].message
+
+
+def remember(messages: list[Any], user: str) -> None:
+    messages.append({"role": "user", "content": user})
+
+
 def run_agent(
-    client: Any,
-    messages: list[Any],
-    tools: list[dict[str, Any]],
-    registry: dict[str, Callable[..., str]],
-    max_iters: int = 10,
+    client: Any, messages: list[Any], tool_schemas: list[dict[str, Any]],
+    registry: dict[str, Callable[..., str]], max_iters: int = 10,
 ) -> list[Any]:
-    for index in range(max_iters):
-        # Supplied: a bounded loop and a final-step instruction.
-        if index == max_iters - 1:
-            messages.append({
-                "role": "system",
-                "content": "This is your last step. Do not call any more tools - "
-                           "give your final answer now.",
-            })
-        response = client.chat.completions.create(model=MODEL, messages=messages, tools=tools)
-        msg = response.choices[0].message
-        messages.append(msg)
-
-        # EXERCISE 5A: if there are no tool calls, return messages.
-        # A final answer ends this turn; it does not prove the task succeeded.
-        if not msg.tool_calls:
+    for _ in range(max_iters):
+        assistant_message = ask(client, messages, tool_schemas)
+        messages.append(assistant_message)
+        if not assistant_message.tool_calls:
             return messages
-
-        for call in msg.tool_calls:
-            # Supplied: failed decoding or execution becomes matching tool feedback.
-            # The model API call above is outside this handler and fails explicitly.
+        for call in assistant_message.tool_calls:
+            ui.show_tool_request(call.id, call.function.name, call.function.arguments)
             try:
-                args = json.loads(call.function.arguments)
-                # EXERCISE 5B: call the named registry function with **args.
-                result = registry[call.function.name](**args)
+                tool_arguments = json.loads(call.function.arguments)
+                if call.function.name == "run_bash" and not ui.approve_command(tool_arguments["command"]):
+                    result = "User declined to run this tool."
+                else:
+                    result = registry[call.function.name](**tool_arguments)
             except Exception as error:
                 result = f"Error: {error}"
-
-            # EXERCISE 5C: append role=tool, tool_call_id=call.id, content=result.
-            messages.append({
-                "role": "tool",
-                "tool_call_id": call.id,
-                "content": result,
-            })
+            ui.show_tool_result(call.id, result)
+            messages.append({"role": "tool", "tool_call_id": call.id, "content": result})
     return messages
+
+
+def read_file(path: str, offset: int = 1, limit: int = 80) -> str:
+    text = Path(path).read_text(encoding="utf-8")
+    return file_excerpt(text, offset=offset, limit=limit)
+
+
+# Tool availability is explicit. Change these lines when the lesson asks.
+TOOL_SCHEMAS = [LIST_SCHEMA, PAGED_READ_SCHEMA, WRITE_FILE_SCHEMA, STR_REPLACE_SCHEMA, RUN_BASH_SCHEMA]
+REGISTRY = {
+    "list_files": list_files, "read_file": read_file,
+    "write_file": write_file, "str_replace": str_replace, "run_bash": run_bash,
+}

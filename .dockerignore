@@ -1,0 +1,11 @@
+.git
+.workshop
+.env
+.env.*
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/node_modules
+**/dist
+output
+archive

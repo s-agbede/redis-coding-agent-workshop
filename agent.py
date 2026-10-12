@@ -1,55 +1,55 @@
-"""Exercise 5: stopping, dispatch, and feedback complete the agent loop.
+"""Your evolving coding agent. Start it with: uv run python main.py.
 
-Run `AGENT_VERBOSE=1 uv run python main.py` after filling the three gaps.
-The final evaluation lesson includes the supplied loop tests.
-JSON decoding, error-to-text handling, and the step cap are supplied.
-The UI in main.py supplies approval wrappers around run_bash and web_fetch.
+Edit this file throughout the workshop. main.py supplies the terminal session,
+client setup and approval UI; tools.py supplies helpers and the other tools.
 """
 
 import json
 import os
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
+
+import ui
+from tools import (
+    LIST_SCHEMA, PAGED_READ_SCHEMA, PLAIN_READ_SCHEMA,
+    WRITE_FILE_SCHEMA, STR_REPLACE_SCHEMA, RUN_BASH_SCHEMA,
+    file_excerpt, list_files, write_file, str_replace, run_bash,
+)
 
 load_dotenv(dotenv_path=".env")
 MODEL = os.environ.get("AGENT_MODEL", "gpt-5")
 
 
+def ask(client: Any, messages: list[Any], tool_schemas: list[dict[str, Any]]) -> Any:
+    """Send the conversation; return the assistant message."""
+    # EXERCISE 1: connect the SDK request.
+    # Keep the message object: later it can contain tool calls as well as text.
+    raise NotImplementedError("Implement ask in agent.py")
+
+
+def remember(messages: list[Any], user: str) -> None:
+    # EXERCISE 2: currently each question discards the earlier conversation.
+    messages[:] = [m for m in messages if isinstance(m, dict) and m.get("role") == "system"]
+    messages.append({"role": "user", "content": user})
+
+
 def run_agent(
-    client: Any,
-    messages: list[Any],
-    tools: list[dict[str, Any]],
-    registry: dict[str, Callable[..., str]],
-    max_iters: int = 10,
+    client: Any, messages: list[Any], tool_schemas: list[dict[str, Any]],
+    registry: dict[str, Callable[..., str]], max_iters: int = 10,
 ) -> list[Any]:
-    for index in range(max_iters):
-        # Supplied: a bounded loop and a final-step instruction.
-        if index == max_iters - 1:
-            messages.append({
-                "role": "system",
-                "content": "This is your last step. Do not call any more tools - "
-                           "give your final answer now.",
-            })
-        response = client.chat.completions.create(model=MODEL, messages=messages, tools=tools)
-        msg = response.choices[0].message
-        messages.append(msg)
-
-        # EXERCISE 5A: if there are no tool calls, return messages.
-        # A final answer ends this turn; it does not prove the task succeeded.
-        raise NotImplementedError("Add the stopping rule")
-
-        for call in msg.tool_calls:
-            # Supplied: failed decoding or execution becomes matching tool feedback.
-            # The model API call above is outside this handler and fails explicitly.
-            try:
-                args = json.loads(call.function.arguments)
-                # EXERCISE 5B: call the named registry function with **args.
-                raise NotImplementedError("Add tool dispatch")
-            except Exception as error:
-                result = f"Error: {error}"
-
-            # EXERCISE 5C: append role=tool, tool_call_id=call.id, content=result.
-            raise NotImplementedError("Add tool feedback")
+    # EXERCISE 3: a single request works for text. Later, handle tool requests.
+    messages.append(ask(client, messages, tool_schemas))
     return messages
+
+
+def read_file(path: str) -> str:
+    # EXERCISE 4: discovering a filename does not reveal its contents.
+    raise NotImplementedError("Implement read_file in agent.py")
+
+
+# Tool availability is explicit. Change these lines when the lesson asks.
+TOOL_SCHEMAS = []
+REGISTRY = {"list_files": list_files, "read_file": read_file}

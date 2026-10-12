@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from tools import read_file
+from agent import read_file
 
 
 def test_read_file_returns_the_file_text(tmp_path: Path) -> None:

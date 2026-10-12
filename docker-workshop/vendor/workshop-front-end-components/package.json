@@ -1,21 +1,13 @@
 {
   "name": "@redis-workshop/components",
   "version": "1.0.0",
-  "description": "Shared frontend components and styles for Redis workshops",
+  "description": "Redis workshop header and Markdown renderer (vendored subset)",
   "main": "src/index.js",
   "type": "module",
-  "scripts": {
-    "verify:content-renderer": "node ./scripts/verify-content-renderer.mjs"
-  },
   "exports": {
     ".": "./src/index.js",
-    "./styles/tokens.css": "./src/styles/tokens.css",
-    "./styles/dark-theme.css": "./src/styles/dark-theme.css",
-    "./styles/content-renderer.css": "./src/styles/content-renderer.css",
-    "./styles/*": "./src/styles/*",
-    "./components/*": "./src/components/*",
-    "./utils/basePath": "./src/utils/basePath.js",
-    "./utils/*": "./src/utils/*"
+    "./components/WorkshopHeader.vue": "./src/components/WorkshopHeader.vue",
+    "./content-renderer/markdown.js": "./src/content-renderer/markdown.js"
   },
   "files": [
     "src"

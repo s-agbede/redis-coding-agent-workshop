@@ -18,18 +18,24 @@ ENV UV_PYTHON=3.12
 RUN uv python install 3.12 --default
 
 WORKDIR /opt/editor
-COPY backend/pyproject.toml backend/uv.lock ./
+COPY docker-workshop/backend/pyproject.toml docker-workshop/backend/uv.lock ./
 RUN uv sync --frozen --no-dev
-COPY backend/app.py backend/terminal.py ./
-COPY docker/guided/terminal.bash ./
+COPY docker-workshop/backend/app.py docker-workshop/backend/terminal.py ./
+COPY docker-workshop/docker/guided/terminal.bash ./
 
 # Preinstall learner dependencies outside the host's macOS virtual environment.
 WORKDIR /opt/student
-COPY student/pyproject.toml student/uv.lock ./
+COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen
 
-COPY docker/guided/start.sh /start.sh
-COPY docker/guided/tmux.conf /etc/tmux.conf
+COPY agent.py main.py tools.py ui.py demo.py preview.py check_setup.py verify_capstone.py pyproject.toml uv.lock README.md WORKSHOP.md FACILITATOR.md /opt/workshop/
+COPY capstone /opt/workshop/capstone
+COPY checkpoints /opt/workshop/checkpoints
+COPY solutions /opt/workshop/solutions
+COPY tests /opt/workshop/tests
+COPY scripts/prepare_workspace.py /opt/workshop/prepare_workspace.py
+COPY docker-workshop/docker/guided/start.sh /start.sh
+COPY docker-workshop/docker/guided/tmux.conf /etc/tmux.conf
 RUN chmod +x /start.sh
 
 WORKDIR /workspace

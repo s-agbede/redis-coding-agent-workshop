@@ -1,46 +1,12 @@
 ---
 title: Give the model a file reader
-editorFile: tools.py
+editorFile: agent.py
 ---
+**10 minutes.** Your own loop can discover files, but `read_file` returns an error. Let's supply the missing observation and repeat the same question.
 
-**12 minutes.** Investigating a project means finding out what is in its files. We have a conversation now; let's see what evidence it gives the model about our local project.
+## Implement the missing capability
 
-## Ask about a local fact
-
-**checkpoints/project_brief.md** is a small fictional release brief supplied for this exercise. It contains a fact we can check: the project's release name.
-
-Before asking, predict: **what can the model know about this file from the messages it has received?** In the chat left running from the previous lesson, enter:
-
-```text
-Read checkpoints/project_brief.md. What is this project's release name?
-```
-
-Inspect the request preview and answer. Did we send file contents, or only a path in a question? The answer may ask you to paste the file, decline, or guess. Look at `chat_turn`: there is no file read and no `tools` argument in its SDK call.
-
-Naming a file does not send its contents or connect the API to your disk. We need a way for the model to request an observation. Type **exit** to return to the shell.
-
-## How a tool supplies that observation
-
-A **tool** lets the harness supply a capability the model can request. For a file reader, there are three parts:
-
-- A **schema** describes the tool's name, purpose and inputs to the model.
-- A **Python function** performs the read on your computer.
-- A **tool result** carries the returned text into the next model request.
-
-![The harness sends a reader schema to the model. The model requests a file read. The harness executes the local reader and returns a matching tool result before the model answers.](/images/tool-exchange.svg)
-
-The model proposes the action. Your Python harness executes it and supplies the observation. This will become PEAS's sensor: a way to inspect the environment. Later, editing and command tools will let the agent change code and run tests, so tools can supply actions as well as observations.
-
-## Add the plain reader
-
-Open **tools.py**. Complete `read_file(path)` by returning the file's UTF-8 text using the imported `Path`. Let file errors reach the caller; we will see how the harness reports them in the loop lesson.
-
-<details>
-<summary>Hint</summary>
-
-`Path(path).read_text(encoding="utf-8")` returns a string. Return that string directly for now.
-
-</details>
+Type `exit` to leave the chat. In **agent.py**, replace `read_file(path)` so it returns the file's UTF-8 text. Leave the schema and loop unchanged. Python's `Path` is already imported.
 
 <details>
 <summary>Copyable solution — replace the whole read_file function</summary>
@@ -52,60 +18,40 @@ def read_file(path: str) -> str:
 
 </details>
 
-Save, then select **Run code**. This supplied checkpoint asks the same release-name question and advertises your reader to the model:
+Save, restart, and ask the same question:
 
 ```bash
-uv run python -m checkpoints.stage2_one_tool
+uv run python main.py
 ```
 
-At the pause, read the proposed request. **Which Python function will execute, with which path?** Predict its result, then press **Enter**. Inspect the returned file text and the model's answer. Compare the release name with the value actually read.
-
-If the model answers without requesting the read, it has still received no file evidence; rerun the command and discuss that distinction with your instructor.
-
-## Read the exchange
-
-The checkpoint supplies a path-only schema like this:
-
-```json
-{"type":"function","function":{
-  "name":"read_file",
-  "description":"Read the complete UTF-8 contents of a known local file.",
-  "parameters":{"type":"object","properties":{
-    "path":{"type":"string"}
-  },"required":["path"]}
-}}
+```text
+What's the latest release decision?
 ```
 
-A model request might look like this; your actual ID can differ:
+Watch `list_files` reveal candidate names and `read_file` bring actual text into the conversation. `list_files` returns usable paths: listing `checkpoints/`, for example, includes `checkpoints/release_log.md`. Your reader uses that path from the same working directory. The model chooses which file to read, and your loop can handle several requests. You do not supply filenames, offsets or a sequence of actions in the user question.
 
-```json
-{"role":"assistant","content":null,"tool_calls":[{
-  "id":"read-1","type":"function","function":{
-    "name":"read_file",
-    "arguments":"{\"path\":\"checkpoints/project_brief.md\"}"
-  }
-}]}
-```
-
-`arguments` is a JSON string. The harness decodes it with `json.loads`, then calls your Python function. It appends the returned text with the **same ID**:
-
-```json
-{"role":"tool","tool_call_id":"read-1","content":"# Project brief\nRelease name: Cedar.\n..."}
-```
-
-This result is shortened for display here. In the real exchange, the next request includes the user task, the assistant's tool request and the matching result. The model can now answer from that observation. Merely printing the text would not send it back.
-
-This checkpoint handles one exchange; it does not yet run a repeated agent loop.
-
-**Quick question:** if the function reads the correct file but the result uses ID `read-2`, has it answered request `read-1` correctly?
+Compare the new reader result with the error you saw before. Locate the exact sentence that supports the answer. Does the decision say that checks **have passed**, or that release is conditional on checks passing?
 
 <details>
-<summary>Compare your answer</summary>
+<summary>Evidence to look for</summary>
 
-No. The result must be paired with the request's ID. The harness must append that matching result and include it in the next model call. Python performs the read; the model interprets the returned evidence.
+The fictional release log records that Cedar is ready **after acceptance checks pass**. That is a condition for release, not evidence that somebody ran those checks. Your reader supplies the source; the model still needs to interpret it accurately.
 
 </details>
 
-Your agent can now obtain project evidence that was absent from the initial prompt. That is a capability it will need to investigate the task-board bug.
+The release log is deliberately long. Look at the **RESULT** panel's character count. Returning the whole file can bury the useful evidence among routine entries. If your model chose only the short project brief, ask “Please inspect the release log itself and support your answer.” This is an evidence request, not instructions for paging.
 
-Optional reading: [OpenAI's tool-calling flow](https://developers.openai.com/api/docs/guides/function-calling#how-it-works).
+**Before the next lesson:** what should a shorter tool response preserve so the agent can still find evidence later in the file?
+
+<details>
+<summary>Catch up if needed</summary>
+
+Save your attempt separately first. After typing `exit` to leave the chat, this copies the complete learner file **through this lesson**, including the earlier exercises:
+
+```bash
+cp solutions/steps/04-reader.py agent.py
+```
+
+Restart with `uv run python main.py`. Refresh the open editor file after copying, before saving over it. This is an explicit replacement of your work, not an automatic fallback.
+
+</details>
