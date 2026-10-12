@@ -6,11 +6,22 @@ export function withCopyButtons(html: string): string {
       const label = runnable ? 'Run code' : /class="language-(?:text|json)"/.test(attributes) ? 'Copy text' : 'Copy code'
       const action = runnable ? 'run' : 'copy'
       const description = runnable ? 'Run code in Terminal' : `${label} to clipboard`
-      return `<div class="lesson-code"><button type="button" data-${action}-code aria-label="${description}">${label}</button><span data-${action}-error role="alert" hidden></span><span data-run-status role="status" hidden></span>${block}</div>`
+      const diagnostics = runnable ? '<details data-run-diagnostics hidden><summary>Diagnostic details</summary><p>These are the address values the backend received. Compare backend_origin with browser_origin: they should match. A null value means a header was missing. The same values are recorded in the backend logs.</p><pre data-diagnostic-text></pre><button type="button" data-copy-diagnostics>Copy diagnostics</button></details>' : ''
+      return `<div class="lesson-code"><button type="button" data-${action}-code aria-label="${description}">${label}</button><span data-${action}-error role="alert" hidden></span><span data-run-status role="status" hidden></span>${block}${diagnostics}</div>`
     })
 }
 
-type CodeActionResult = { ok: boolean; message: string }
+const diagnosticKeys = ['backend_origin', 'browser_origin', 'sec_fetch_site', 'forwarded_proto', 'forwarded_host'] as const
+type OriginDiagnostics = Record<typeof diagnosticKeys[number], string | null>
+type CodeActionResult = { ok: boolean; message: string; diagnostics?: OriginDiagnostics }
+
+function readDiagnostics(value: unknown): OriginDiagnostics | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
+  const fields = value as Record<string, unknown>
+  return Object.fromEntries(diagnosticKeys.map(key => [
+    key, typeof fields[key] === 'string' ? fields[key].slice(0, 512) : null
+  ])) as OriginDiagnostics
+}
 
 /** Dispatch once: a lost response must never cause a command to run twice. */
 export async function runCode(command: string, endpoint: string, request: typeof fetch = fetch): Promise<CodeActionResult> {
@@ -26,7 +37,8 @@ export async function runCode(command: string, endpoint: string, request: typeof
       return { ok: true, message: 'Sent to Terminal. Check the output there.' }
     }
     if (!response.ok && payload && typeof payload === 'object' && 'detail' in payload && typeof payload.detail === 'string') {
-      return { ok: false, message: payload.detail }
+      const diagnostics = response.status === 403 && 'diagnostics' in payload ? readDiagnostics(payload.diagnostics) : undefined
+      return { ok: false, message: payload.detail, ...(diagnostics ? { diagnostics } : {}) }
     }
   } catch {
     // A network/proxy failure may happen after the terminal accepted the command.

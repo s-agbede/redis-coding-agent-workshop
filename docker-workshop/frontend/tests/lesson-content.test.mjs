@@ -102,3 +102,18 @@ test('file actions preserve code blocks and existing links without introducing u
   assert.equal(lessonContent.withFileButtons(html, ['first_call.py', '../secret.py', '<img src=x>']), html)
   assert.equal(lessonContent.withFileButtons('<strong>first_call.py</strong>', []), '<strong>first_call.py</strong>')
 })
+
+
+test('origin diagnostics keep only bounded address fields', async () => {
+  const diagnostics = {
+    backend_origin: 'http://runtime:8081', browser_origin: 'https://workshop.example',
+    sec_fetch_site: 'same-origin', forwarded_proto: 'https', forwarded_host: null
+  }
+  const result = await lessonContent.runCode('pwd', '/api/terminal/run', async () =>
+    new Response(JSON.stringify({ detail: 'Origin rejected', diagnostics: { ...diagnostics, cookie: 'secret' } }), { status: 403 }))
+  assert.deepEqual(result.diagnostics, diagnostics)
+  const malformed = await lessonContent.runCode('pwd', '/api/terminal/run', async () =>
+    new Response(JSON.stringify({ detail: 'Origin rejected', diagnostics: { ...diagnostics, backend_origin: {}, browser_origin: 'x'.repeat(1000) } }), { status: 403 }))
+  assert.equal(malformed.diagnostics.backend_origin, null)
+  assert.equal(malformed.diagnostics.browser_origin.length, 512)
+})

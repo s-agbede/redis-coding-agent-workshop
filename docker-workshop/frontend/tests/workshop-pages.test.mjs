@@ -125,12 +125,14 @@ test('lesson copy control uses the code text and exposes clipboard failure in th
 function runClickFixture(command) {
   const error = { textContent: '', hidden: true }
   const status = { textContent: '', hidden: true }
+  const diagnosticText = { textContent: '' }
+  const diagnostics = { hidden: true, open: false }
   const code = { textContent: command }
   const button = { disabled: false, textContent: 'Run code', parentElement: {
-    querySelector: selector => selector === 'pre code' ? code : selector === '[data-run-status]' ? status : error
+    querySelector: selector => selector === 'pre code' ? code : selector === '[data-run-status]' ? status : selector === '[data-run-diagnostics]' ? diagnostics : selector === '[data-diagnostic-text]' ? diagnosticText : error
   } }
   const event = { target: { closest: selector => selector === 'button[data-run-code]' ? button : null } }
-  return { error, status, button, event }
+  return { error, status, button, event, diagnostics, diagnosticText }
 }
 
 test('welcome Run code reveals its parent Terminal and direct welcome refuses dispatch', async () => {
@@ -463,4 +465,29 @@ test('new curriculum ignores old numeric lesson positions and restores by file n
   page = await mount(Build)
   assert.equal(page.vm.currentBuildStep, 1)
   page.unmount()
+})
+
+
+test('origin diagnostics are readable, copyable and cleared on the next attempt', async () => {
+  const originalFetch = globalThis.fetch
+  const values = { backend_origin: 'http://runtime:8081', browser_origin: 'https://workshop.example', sec_fetch_site: 'same-origin', forwarded_proto: 'https', forwarded_host: null }
+  globalThis.fetch = async () => new Response(JSON.stringify({ detail: 'Origin rejected', diagnostics: values }), { status: 403 })
+  const page = await mount(LessonContent, { html: '<pre><code class="language-bash">pwd</code></pre>' })
+  try {
+    const node = findAll(page.root, el => el.props.innerHTML)[0]
+    assert.match(node.props.innerHTML, /Diagnostic details/)
+    const fixture = runClickFixture('pwd')
+    await node.props.onClick(fixture.event)
+    assert.equal(fixture.diagnostics.hidden, false)
+    assert.deepEqual(JSON.parse(fixture.diagnosticText.textContent), values)
+    let copied
+    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { clipboard: { writeText: async text => { copied = text } } } })
+    const copyButton = { textContent: 'Copy diagnostics', parentElement: { querySelector: () => fixture.diagnosticText } }
+    await node.props.onClick({ target: { closest: selector => selector === 'button[data-copy-diagnostics]' ? copyButton : null } })
+    assert.equal(copied, fixture.diagnosticText.textContent)
+    globalThis.fetch = async () => new Response(JSON.stringify({ status: 'sent' }))
+    await node.props.onClick(fixture.event)
+    assert.equal(fixture.diagnostics.hidden, true)
+    assert.equal(fixture.diagnosticText.textContent, '')
+  } finally { globalThis.fetch = originalFetch; page.unmount() }
 })

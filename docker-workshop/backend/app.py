@@ -186,7 +186,7 @@ def create_app(
                 request.headers.get("origin") != origin
                 or request.headers.get("sec-fetch-site", "same-origin") != "same-origin"
             ):
-                # Log only address metadata, never commands, cookies or credentials.
+                # Share only bounded address metadata, never commands, cookies or credentials.
                 details = {
                     "backend_origin": origin,
                     "browser_origin": request.headers.get("origin"),
@@ -194,16 +194,18 @@ def create_app(
                     "forwarded_proto": request.headers.get("x-forwarded-proto"),
                     "forwarded_host": request.headers.get("x-forwarded-host"),
                 }
-                origin_logger.warning(
-                    "Terminal origin rejected: %s",
-                    json.dumps({
-                        key: value[:512] if value is not None else None
-                        for key, value in details.items()
-                    }),
-                )
+                diagnostics = {
+                    key: value[:512] if value is not None else None
+                    for key, value in details.items()
+                }
+                origin_logger.warning("Terminal origin rejected: %s", json.dumps(diagnostics))
                 return Response(
-                    content='{"detail":"Terminal commands require the same workshop origin."}',
+                    content=json.dumps({
+                        "detail": "Terminal commands require the same workshop origin.",
+                        "diagnostics": diagnostics,
+                    }),
                     status_code=403, media_type="application/json",
+                    headers={"Cache-Control": "no-store"},
                 )
             if request.headers.get("content-type", "").split(";", 1)[0].lower() != "application/json":
                 return Response(

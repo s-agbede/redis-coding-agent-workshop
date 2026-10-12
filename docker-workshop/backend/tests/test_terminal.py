@@ -40,6 +40,10 @@ def test_origin_rejection_logs_addresses_without_request_secrets(
         "forwarded_proto": "https",
         "forwarded_host": "workshop.example",
     }
+    assert response.json()["diagnostics"] == details
+    assert response.json()["detail"] == "Terminal commands require the same workshop origin."
+    for secret in ("private-command", "private-token", "private-cookie"):
+        assert secret not in response.text
     assert "private-command" not in caplog.text
     assert "private-token" not in caplog.text
     assert "private-cookie" not in caplog.text

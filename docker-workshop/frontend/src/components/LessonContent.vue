@@ -27,6 +27,13 @@ async function handleClick(event: MouseEvent): Promise<void> {
     emit('open-file', path)
     return
   }
+  const diagnosticCopy = target.closest<HTMLButtonElement>('button[data-copy-diagnostics]')
+  if (diagnosticCopy) {
+    const text = diagnosticCopy.parentElement?.querySelector('[data-diagnostic-text]')?.textContent || ''
+    const result = await copyCode(text, navigator.clipboard)
+    diagnosticCopy.textContent = result.ok ? 'Copied' : 'Copy failed — select the details and copy manually'
+    return
+  }
   const runButton = target.closest<HTMLButtonElement>('button[data-run-code]')
   if (runButton) {
     if (dispatching) return
@@ -34,6 +41,12 @@ async function handleClick(event: MouseEvent): Promise<void> {
     if (!code) return
     const error = runButton.parentElement?.querySelector<HTMLElement>('[data-run-error]')
     const status = runButton.parentElement?.querySelector<HTMLElement>('[data-run-status]')
+    const diagnostics = runButton.parentElement?.querySelector<HTMLDetailsElement>('[data-run-diagnostics]')
+    const diagnosticText = runButton.parentElement?.querySelector<HTMLElement>('[data-diagnostic-text]')
+    const copyDiagnostics = runButton.parentElement?.querySelector<HTMLButtonElement>('[data-copy-diagnostics]')
+    if (diagnostics) { diagnostics.hidden = true; diagnostics.open = false }
+    if (diagnosticText) diagnosticText.textContent = ''
+    if (copyDiagnostics) copyDiagnostics.textContent = 'Copy diagnostics'
     if (!props.terminalAvailable) {
       if (error) {
         error.textContent = 'Open the workbench using the link above to run code in Terminal.'
@@ -56,6 +69,10 @@ async function handleClick(event: MouseEvent): Promise<void> {
     if (error) {
       error.textContent = result.ok ? '' : result.message
       error.hidden = result.ok
+    }
+    if (diagnostics && diagnosticText && result.diagnostics) {
+      diagnosticText.textContent = JSON.stringify(result.diagnostics, null, 2)
+      diagnostics.hidden = false
     }
     if (status) {
       status.textContent = result.ok ? result.message : ''
@@ -105,5 +122,9 @@ async function handleClick(event: MouseEvent): Promise<void> {
 .lesson-content :deep([data-run-code]:disabled) { opacity: .6; cursor: wait; }
 .lesson-content :deep([data-copy-error]:not([hidden])), .lesson-content :deep([data-run-error]:not([hidden])) { display: block; margin: .4rem .75rem; padding: .5rem; border: 1px solid #fc8181; color: #fed7d7; border-radius: 4px; }
 .lesson-content :deep([data-run-status]:not([hidden])) { display: block; margin: .4rem .75rem; color: #b2f5ea; font-size: .85rem; }
+.lesson-content :deep([data-run-diagnostics]) { margin: .75rem; padding: .75rem; border: 1px solid #718096; border-radius: 4px; color: #e2e8f0; }
+.lesson-content :deep([data-run-diagnostics] summary) { cursor: pointer; }
+.lesson-content :deep([data-diagnostic-text]) { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .85rem; }
+.lesson-content :deep([data-copy-diagnostics]) { border: 1px solid #718096; border-radius: 4px; padding: .35rem .6rem; color: #e2e8f0; background: #2d3748; cursor: pointer; font: inherit; }
 .copy-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 </style>

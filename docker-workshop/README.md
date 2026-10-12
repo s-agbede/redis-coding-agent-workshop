@@ -58,6 +58,29 @@ Shell blocks have **Run code**, Python answers have **Copy code**, and prompts h
 
 Old browser learning records are preserved on upgrade, though the active lessons no longer show evidence forms. They do not affect workshop navigation.
 
+## Diagnose a Run code origin error
+
+If Run code reports “Terminal commands require the same workshop origin,” expand
+**Diagnostic details** beneath the command and use **Copy diagnostics**. You do
+not need browser developer tools or SSH to read these values. Compare
+`backend_origin` (the address Python sees) with `browser_origin` (the browser's
+Origin header). They should match, including scheme and port. `sec_fetch_site`
+should be `same-origin` when present. `forwarded_proto` and `forwarded_host` show
+the forwarding headers received by Python; `null` means a header was absent.
+
+The same values appear in backend logs. On the Docker host, from the repository
+root, run:
+
+```bash
+docker compose logs --tail=100 runtime
+```
+
+Look for `Terminal origin rejected`. Diagnostics contain only five bounded
+address fields, excluding commands, cookies and authorization headers. They
+appear only when Python rejects the origin; an error from the outer gateway or
+an older runtime may not include them. After updating the source, save learner
+work and run `bash start.sh` to rebuild both services, then refresh the browser.
+
 ## App Preview
 
 When instructed, start the supplied app once:
