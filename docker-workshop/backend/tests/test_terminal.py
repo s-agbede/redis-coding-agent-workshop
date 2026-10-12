@@ -1,6 +1,7 @@
 """Commands are dispatched to the visible shell, never to a busy program."""
 
 import json
+import logging
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,40 @@ from fastapi.testclient import TestClient
 
 from app import create_app
 from terminal import TerminalBusy, TerminalUnavailable
+
+
+def test_origin_rejection_logs_addresses_without_request_secrets(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture,
+) -> None:
+    sent: list[str] = []
+    client = TestClient(create_app(tmp_path, run_terminal=sent.append), base_url="http://internal:8081")
+    with caplog.at_level(logging.WARNING, logger="workshop.origin"):
+        response = client.post(
+            "/api/terminal/run",
+            json={"command": "echo private-command"},
+            headers={
+                "Origin": "https://workshop.example",
+                "Sec-Fetch-Site": "same-origin",
+                "X-Forwarded-Proto": "https",
+                "X-Forwarded-Host": "workshop.example",
+                "Authorization": "Bearer private-token",
+                "Cookie": "session=private-cookie",
+            },
+        )
+    assert response.status_code == 403
+    assert not sent
+    record = next(record for record in caplog.records if record.name == "workshop.origin")
+    details = json.loads(record.getMessage().split("Terminal origin rejected: ", 1)[1])
+    assert details == {
+        "backend_origin": "http://internal:8081",
+        "browser_origin": "https://workshop.example",
+        "sec_fetch_site": "same-origin",
+        "forwarded_proto": "https",
+        "forwarded_host": "workshop.example",
+    }
+    assert "private-command" not in caplog.text
+    assert "private-token" not in caplog.text
+    assert "private-cookie" not in caplog.text
 
 
 def test_terminal_route_exists_before_runtime_is_available(tmp_path: Path) -> None:

@@ -1,5 +1,6 @@
 import errno
 import json
+import logging
 import os
 import stat
 from collections.abc import Awaitable, Callable, Iterator
@@ -15,6 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator
 from terminal import TerminalBusy, TerminalDispatcher, TerminalUnavailable
 
 MAX_CONTENT_BYTES = 1024 * 1024
+origin_logger = logging.getLogger("workshop.origin")
 EXCLUDED_DIRECTORIES = {"node_modules", "__pycache__", "dist", "build"}
 LANGUAGES = {
     ".py": "python",
@@ -184,6 +186,21 @@ def create_app(
                 request.headers.get("origin") != origin
                 or request.headers.get("sec-fetch-site", "same-origin") != "same-origin"
             ):
+                # Log only address metadata, never commands, cookies or credentials.
+                details = {
+                    "backend_origin": origin,
+                    "browser_origin": request.headers.get("origin"),
+                    "sec_fetch_site": request.headers.get("sec-fetch-site"),
+                    "forwarded_proto": request.headers.get("x-forwarded-proto"),
+                    "forwarded_host": request.headers.get("x-forwarded-host"),
+                }
+                origin_logger.warning(
+                    "Terminal origin rejected: %s",
+                    json.dumps({
+                        key: value[:512] if value is not None else None
+                        for key, value in details.items()
+                    }),
+                )
                 return Response(
                     content='{"detail":"Terminal commands require the same workshop origin."}',
                     status_code=403, media_type="application/json",
