@@ -29,9 +29,62 @@ bash start.sh
 
 Open **http://localhost:8080**. The browser workspace is prepared from the root Python source on first start; your edits are saved in `.workshop/`. App Preview starts automatically. See [browser setup](docker-workshop/README.md) and [upstream provenance](docker-workshop/UPSTREAM.md).
 
+## Portal project format
+
+This workshop also provides [`portal-project.json`](portal-project.json) and
+[`compose.portal.yaml`](compose.portal.yaml) for the shared portal project standard.
+The existing `docker-compose.yml` and `bash start.sh` local workflow are unchanged.
+
+The portal format supports both a single Docker service and a Compose project.
+This workshop uses Compose because its browser frontend and learner runtime are
+separate services. The entry service is `frontend`, listening on port `80`; the
+readiness endpoint is `/api/health`. The runtime service also checks its backend,
+terminal and editor before the frontend starts.
+
+Unlike the local setup, `compose.portal.yaml` publishes no host ports and has no
+fixed project/container names. A runner chooses a unique project name and exposes
+the frontend through its own access boundary. Learner work is stored in a
+project-scoped `workspace` volume, rather than the host `.workshop/` directory.
+Editor data and the learner Python environment are also project-scoped volumes.
+Separate projects avoid accidentally sharing these volumes; this is not a claim
+of complete tenant isolation. Removing those project volumes deletes learner work.
+
+`AGENT_API_KEY` is required for the real model-backed exercises. Supply its value
+at runtime; never commit it to the manifest. `AGENT_BASE_URL`, `AGENT_MODEL` and the
+other optional settings retain the existing local defaults. A successful image
+build or readiness response does not validate credentials, provider access,
+exercise correctness or learning outcomes. Those require an instructor rehearsal
+with the intended provider configured.
+
+### One standard for demos and workshops
+
+Use the same runtime contract for both purposes and set `kind` to `demo` or
+`workshop`. Runtime packaging is independent of the teaching/presentation format.
+For now, keep purpose-specific guidance in README and facilitator documentation:
+
+- **Demos:** customer use case, outcome to demonstrate, talking points and typical
+  presentation duration.
+- **Workshops:** audience, prerequisites, learning outcomes, suggested teaching
+  duration and attendee setup.
+
+For this workshop, the audience is experienced Python developers new to LLM
+applications. Learners build model calls, conversation handling, a tool loop and
+file-reading behaviour, then repair and evaluate code. Plan 90 minutes (80 minutes
+of activities plus a ten-minute buffer); validate that timing in rehearsal.
+Teaching duration is distinct from the lifetime of a hosted session.
+
+Repository checks inspect files only. They do not build, start or audit the
+application. The included `check_project.py` uses the shared starter's checks.
+With Docker running and `AGENT_API_KEY` exported in your shell, use `uv run check_project.py . --run` for a
+runtime smoke test. uv provisions the script's small YAML parser dependency
+automatically. Use `uv run check_project.py .` for static checks only, and
+separately complete the instructor rehearsal. The checker does not automatically
+load `.env`; export required values in your shell. Hosted registration, per-attendee routing and deployment are separate integration work.
+
 ## Repository layout
 
-- `docker-compose.yml`, `start.sh`, `build.sh`: the single workshop deployment and its entry points. The hosted lab can also invoke `bash build.sh` to build and start the workshop. Use `docker compose build` to build images only.
+- `docker-compose.yml`, `start.sh`, `build.sh`: the existing local workshop deployment and its entry points. The hosted lab can also invoke `bash build.sh` to build and start the workshop. Use `docker compose build` to build images only.
+- `portal-project.json`, `compose.portal.yaml`: shared portal metadata and a separate runner-managed Compose profile.
 - `docker-workshop/`: browser platform — frontend, workbench, runtime backend, Docker image files and attributed shared components.
 - `.workshop/`: generated learner workspace mounted into the browser at `/workspace`; ignored by Git. Existing learner edits survive restarts.
 - Root Python files, `checkpoints/`, `capstone/`, `solutions/`, `tests/`: the maintained workshop source. Runtime startup refreshes supplied helpers from this source and initializes missing learner files without replacing edits to `agent.py` or `capstone/`.
@@ -89,3 +142,11 @@ The terminal session is interactive: type `exit` before running the remaining sh
 Read [WORKSHOP.md](WORKSHOP.md) for the schedule and [FACILITATOR.md](FACILITATOR.md) for teaching notes. Use `uv run python demo.py` to practise with the completed agent.
 
 Historical research and earlier designs remain in `archive/`. Use the current lesson manifest and workshop schedule for teaching. Durable memory, advanced context management and multiple agents are follow-on topics.
+
+## Portal checker tests
+
+These tests exercise the project contract and cleanup separately from unfinished learner exercises:
+
+```sh
+uv run --no-project --with "PyYAML>=6.0.2,<7" python -m unittest discover -s portal-tests -v
+```

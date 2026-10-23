@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "kind": "workshop",
+  "title": "Build a Coding Agent From First Principles",
+  "description": "An instructor-guided Python workshop: build an agent that uses tools to inspect and repair code.",
+  "runtime": {
+    "type": "compose",
+    "file": "compose.portal.yaml",
+    "service": "frontend",
+    "port": 80,
+    "healthPath": "/api/health"
+  },
+  "requiredEnv": ["AGENT_API_KEY"]
+}

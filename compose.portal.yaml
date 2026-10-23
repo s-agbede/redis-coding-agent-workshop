@@ -1,0 +1,38 @@
+# Portal execution chooses a unique Compose project name and publishes the
+# frontend port. Keep local development in docker-compose.yml unchanged.
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: docker-workshop/frontend/Dockerfile
+    depends_on:
+      runtime:
+        condition: service_healthy
+
+  runtime:
+    build:
+      context: .
+      dockerfile: docker-workshop/docker/guided/Dockerfile
+    volumes:
+      - workspace:/workspace
+      - workbench-venv:/opt/student/.venv
+      - code-server-data:/opt/code-server
+    environment:
+      WORKSHOP_PREVIEW_FILE: /tmp/workshop-preview
+      AGENT_API_KEY: ${AGENT_API_KEY:-}
+      AGENT_BASE_URL: ${AGENT_BASE_URL:-}
+      AGENT_MODEL: ${AGENT_MODEL:-gpt-5}
+      AGENT_MAX_ITERS: ${AGENT_MAX_ITERS:-25}
+      AGENT_REQUEST_TIMEOUT: ${AGENT_REQUEST_TIMEOUT:-90}
+      AGENT_AUTO_APPROVE: ${AGENT_AUTO_APPROVE:-}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8081/api/health >/dev/null && curl -fsS http://localhost:7681/terminal/ >/dev/null && curl -fsS http://localhost:8080/healthz >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
+
+volumes:
+  workspace:
+  workbench-venv:
+  code-server-data:
