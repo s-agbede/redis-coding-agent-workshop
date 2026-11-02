@@ -1,27 +1,19 @@
----
-title: Build a Coding Agent
-subtitle: From a first model call to an agent that repairs a Python app.
-estimatedMinutes: 90
-description: Build an agent that investigates why a task loses its completed status after refresh, repairs the app, and checks the result.
----
+# Give a coding agent useful memory
 
-Your instructor will guide you through six connected lessons. You will:
+A 90-minute workshop and Part 2 of the coding agent series. Part 1 built a working agent; the recap covers what you need if you missed it.
 
-- Explain how a model and its harness work together.
-- Use a short PEAS discussion to decide what evidence and actions your agent needs.
-- Build conversation history, useful tools and a working agent loop.
-- Ask your agent to repair a Python app, then use supplied evaluation checks to assess the result.
+Today's question: **what should a coding agent know, where does that knowledge come from, and who owns it?** You will watch a preference disappear, persist a project instruction in a file, let **Redis Agent Memory** learn a preference from your work and recall it in a fresh session, then retrieve a team procedure from **Redis Agent Playbook** and check the validator the agent writes.
 
-Edit and save in **Code**, then select **Run code** on a command to run it in the visible **Terminal**. Use **Copy code** for Python answers and **Copy text** for prompts to paste into a running chat. Try each small function yourself; open a hint or copyable answer whenever it helps. Short questions are for discussion, with answers on the page.
+Each section is a short instructor demo followed by **five minutes for you**. Your turn copies a ready-made `agent.py` from `solutions/steps/`; the code is there to read, not to type.
 
-Your request, history, loop and reader live in **agent.py**. Each edit changes what this same program can do. Start it with `uv run python main.py`; type questions into the running chat.
-
-After changing code, save, leave any running chat with `exit`, and run the command again. This loads your changes and starts a fresh conversation. Press **Ctrl+C** to interrupt when needed.
-
-If you need a quick environment check:
+**You edit `agent.py`; the agent edits `project/`.** Start the agent in the shell terminal from the repository root:
 
 ```bash
-uv run python check_setup.py
+uv run --group iris python main.py
 ```
 
-Start with **Make your first model call**.
+At the `You >` prompt, type `/status`, or `/help` for all commands. Shell commands go in the shell; tasks and slash commands go at `You >`. After changing `agent.py`: save, type `exit`, relaunch.
+
+Your instructor provides the model and service connections. All data is synthetic.
+
+Start with the [recap](/build?lesson=01-recap.md).

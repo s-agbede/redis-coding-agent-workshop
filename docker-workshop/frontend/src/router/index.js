@@ -5,6 +5,8 @@ import Welcome from '../views/Welcome.vue'
 import Build from '../views/Build.vue'
 
 const routes = [
+  { path: '/part2', redirect: '/' },
+  { path: '/part2/build', redirect: '/build' },
   {
     path: '/',
     name: 'Welcome',

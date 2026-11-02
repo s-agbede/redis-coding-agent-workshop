@@ -35,6 +35,14 @@ function safeImagePath(path, assetBasePath) {
   return base + path;
 }
 
+function safeWorkshopLink(path, basePath = '') {
+  // Published references and lesson routes only; reject encoding and dot segments.
+  if (!/^\/(?:build|(?:challenge|docs|skills|solutions)(?:\/[a-zA-Z0-9_-][a-zA-Z0-9_.-]*)*)(?:\?lesson=[a-zA-Z0-9_-]+\.md)?(?:#[a-zA-Z0-9_-]+)?$/.test(path)) return null;
+  const base = basePath.replace(/\/$/, '');
+  if (base && !/^(?:\/[a-zA-Z0-9_-]+)+$/.test(base)) return null;
+  return escapeHtml(base + path);
+}
+
 function renderInlineMarkdown(text, options = {}) {
   const source = String(text || '');
   const plain = value => escapeHtml(value)
@@ -54,8 +62,9 @@ function renderInlineMarkdown(text, options = {}) {
       const src = safeImagePath(path, options.assetBasePath || '');
       html = src ? `<img src="${escapeHtml(src)}" alt="${escapeHtml(label)}" loading="lazy">` : escapeHtml(label);
     } else {
-      const href = sanitizeUrl(path);
-      html = href ? `<a href="${href}" target="_blank" rel="noopener noreferrer">${plain(label)}</a>` : plain(label);
+      const localHref = safeWorkshopLink(path, options.assetBasePath);
+      const href = localHref || sanitizeUrl(path);
+      html = localHref ? `<a href="${localHref}">${plain(label)}</a>` : href ? `<a href="${href}" target="_blank" rel="noopener noreferrer">${plain(label)}</a>` : plain(label);
     }
     const token = `${tokenPrefix}${tokens.length}\u0000`;
     tokens.push(html);

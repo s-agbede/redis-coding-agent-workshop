@@ -19,7 +19,7 @@
  */
 
 const config = {
-  title: 'Build a Coding Agent',
+  title: 'Give your coding agent memory',
   sidebar: {
     id: 'instructions',
     name: 'Instructions',
@@ -28,7 +28,6 @@ const config = {
   },
   panels: [
     { id: 'vscode', name: 'Code', path: '/vscode/?folder=/workspace', icon: 'fa-code', visible: true },
-    { id: 'terminal', name: 'Terminal', path: '/terminal/', icon: 'fa-terminal', visible: true },
-    { id: 'app', name: 'App Preview', path: '/app/', icon: 'fa-rocket', visible: false }
+    { id: 'terminal', name: 'Terminal', path: '/terminal/', icon: 'fa-terminal', visible: true }
   ]
 };

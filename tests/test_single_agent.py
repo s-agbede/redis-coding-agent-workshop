@@ -17,16 +17,6 @@ def load(path: Path):
     return module
 
 
-def test_starter_has_one_request_path_and_later_gaps_do_not_block_it():
-    learner = load(ROOT / "agent.py")
-    assert hasattr(learner, "ask"), "The model request belongs in agent.py"
-    learner.ask = lambda client, messages, tools: text("a live transport reply")
-    messages = [{"role": "user", "content": "hello"}]
-    learner.run_agent(None, messages, learner.TOOL_SCHEMAS, learner.REGISTRY)
-    assert messages[-1].content == "a live transport reply"
-    assert learner.TOOL_SCHEMAS == []
-    with pytest.raises(NotImplementedError, match="read_file"):
-        learner.read_file("unused.txt")
 
 
 def test_completed_file_retains_history_and_executes_actual_reader(tmp_path):

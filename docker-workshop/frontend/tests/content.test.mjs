@@ -26,15 +26,15 @@ test('Python code survives Markdown rendering without losing indentation or **kw
   assert.ok(!html.includes('<br>'))
 })
 
-test('the six lessons follow the agreed learning order and link to existing exercise files', async () => {
+test('the six memory lessons follow the agreed learning order and link to existing exercise files', async () => {
   const manifest = await readFile(new URL('../public/build-steps/manifest.yaml', import.meta.url), 'utf8')
   const names = [...manifest.matchAll(/- file: (.+)/g)].map(match => match[1])
-  assert.deepEqual(names, ['01-first-call.md', '03-conversation.md', '06-agent-loop.md', '04-one-tool.md', '05-better-tools.md', '07-capstone.md'])
+  assert.deepEqual(names, ['01-recap.md', '02-forgetting.md', '03-capture.md', '04-recall.md', '05-playbook.md', '06-verify.md'])
   for (const name of names) {
     const lesson = await readFile(new URL('../public/build-steps/' + name, import.meta.url), 'utf8')
     assert.ok(!lesson.includes('/vscode/'))
     const path = lesson.match(/^editorFile: (.+)$/m)?.[1]
-    assert.equal(path, 'agent.py')
+    assert.ok(!path.startsWith('part2/'))
     assert.ok(path, `${name} needs an editor file`)
     await readFile(new URL('../../../' + path, import.meta.url), 'utf8')
   }
@@ -102,4 +102,62 @@ test('welcome content defaults to 90 minutes when duration metadata is missing',
     globalThis.fetch = originalFetch
     globalThis.window = originalWindow
   }
+})
+
+
+test('the single workshop loads its root manifest, lessons and welcome', async () => {
+  const oldFetch = globalThis.fetch
+  const oldWindow = globalThis.window
+  const requests = []
+  globalThis.window = { location: { pathname: '/guide/build' } }
+  globalThis.fetch = async url => {
+    requests.push(url)
+    if (url.endsWith('manifest.yaml')) return new Response('steps:\n  - file: 01-existing-agent.md\n    title: Existing agent\n')
+    if (url.endsWith('welcome.md')) return new Response('---\ntitle: Memory workshop\n---\nWelcome')
+    return new Response('---\ntitle: Existing agent\neditorFile: agent.py\n---\nInspect your agent.')
+  }
+  try {
+    const { loadAllBuildSteps } = await import('../src/utils/buildSteps.js')
+    const { loadWelcomeContent } = await import('../src/utils/pageContent.js')
+    assert.equal((await loadAllBuildSteps())[0].editorFile, 'agent.py')
+    assert.equal((await loadWelcomeContent()).title, 'Memory workshop')
+    await loadWelcomeContent()
+    assert.deepEqual(requests, ['/guide/build-steps/manifest.yaml', '/guide/build-steps/01-existing-agent.md', '/guide/welcome.md', '/guide/welcome.md'])
+  } finally {
+    globalThis.fetch = oldFetch
+    globalThis.window = oldWindow
+  }
+})
+
+test('Root local lesson and reference links stay within the guide proxy', async () => {
+  globalThis.window = { location: { pathname: '/hub/workshop/agent/build' } }
+  const { markdownToHtml } = await import('../src/utils/markdown.js')
+  const html = markdownToHtml('[Next](/build?lesson=04-capture.md)\n[Contract](/challenge/CONTRACT.md)')
+  assert.match(html, /href="\/hub\/workshop\/agent\/build\?lesson=04-capture.md"/)
+  assert.match(html, /href="\/hub\/workshop\/agent\/challenge\/CONTRACT.md"/)
+  assert.doesNotMatch(html, /target="_blank"/)
+})
+
+
+test('local reference links reject traversal, encoded paths and attribute injection', () => {
+  for (const path of ['/challenge/../secret', '/challenge/%2e%2e/secret', '//evil.test/challenge', '/challenge/x"onclick="bad', '/build?lesson=../secret', '/other/path']) {
+    assert.doesNotMatch(renderMarkdown(`[Reference](${path})`), /<a /)
+  }
+  assert.match(renderMarkdown('[Web](https://example.com)'), /target="_blank"/)
+})
+
+test('published skills and solution references remain clickable within the guide', () => {
+  for (const path of ['/skills/report-validation/SKILL.md', '/solutions/validator.py']) {
+    assert.ok(renderMarkdown(`[Reference](${path})`, { assetBasePath: '/guide' }).includes(`href="/guide${path}"`))
+  }
+  for (const path of ['/skills/../secret', '/solutions/%2e%2e/secret', '/skills/x"onclick="bad', '/solutions/./validator.py', '/skills//report.md']) {
+    assert.doesNotMatch(renderMarkdown(`[Reference](${path})`), /<a /)
+  }
+})
+
+test('frontend image supplies every lesson editor file before running content tests', async () => {
+  const dockerfile = await readFile(new URL('../Dockerfile', import.meta.url), 'utf8')
+  const beforeTests = dockerfile.split('RUN npm test')[0]
+  assert.match(beforeTests, /COPY agent\.py \/workshop\/agent\.py/)
+  assert.match(beforeTests, /COPY project \/workshop\/project/)
 })

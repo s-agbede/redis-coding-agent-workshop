@@ -311,3 +311,11 @@ test('demo preview reveals the app, labels it, and reloads when learner preview 
   assert.equal(elements.get('panel-app').children['.panel-title'].textContent, 'App Preview');
   assert.equal(reloads, 2);
 });
+
+test('memory workbench offers only Code and Terminal beside Instructions', () => {
+  const context = vm.createContext({});
+  vm.runInContext(readFileSync(resolve(root, 'config.js'), 'utf8'), context);
+  const panels = vm.runInContext('config.panels.map(panel => panel.id)', context);
+  assert.deepEqual(Array.from(panels), ['vscode', 'terminal']);
+  assert.equal(vm.runInContext('config.title', context), 'Give your coding agent memory');
+});

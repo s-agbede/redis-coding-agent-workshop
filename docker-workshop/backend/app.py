@@ -38,6 +38,10 @@ class RunCommand(BaseModel):
         return command
 
 
+class WorkspaceFile(BaseModel):
+    path: str
+
+
 class CommandSent(BaseModel):
     status: Literal["sent"] = "sent"
 
@@ -126,6 +130,24 @@ def create_app(
     @application.get("/api/health")
     def health() -> Health:
         return Health()
+
+    @application.get("/api/editor/files")
+    def workspace_files() -> list[WorkspaceFile]:
+        paths: list[str] = []
+        skipped = {'node_modules', '__pycache__', 'output', 'archive', 'dist'}
+        for directory, folders, files in os.walk(root, followlinks=False):
+            base = Path(directory)
+            folders[:] = sorted(name for name in folders
+                                if not name.startswith('.') and name not in skipped
+                                and not (base / name).is_symlink())
+            for name in sorted(files):
+                path = base / name
+                if name.startswith('.') or path.is_symlink() or path.suffix not in {'.py', '.md', '.json', '.toml'}:
+                    continue
+                paths.append(path.relative_to(root).as_posix())
+                if len(paths) >= 2000:
+                    return [WorkspaceFile(path=value) for value in sorted(paths)]
+        return [WorkspaceFile(path=value) for value in sorted(paths)]
 
     @application.get("/api/preview")
     def preview_status() -> dict[str, str]:

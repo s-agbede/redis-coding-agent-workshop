@@ -97,6 +97,8 @@ async function handleClick(event: MouseEvent): Promise<void> {
 </script>
 
 <style scoped>
+.lesson-content :deep(a) { color: #a9c7ff; text-decoration: underline; text-underline-offset: .15em; }
+.lesson-content :deep(a:focus-visible) { outline: 2px solid #fff; outline-offset: 3px; }
 .lesson-content { min-width: 0; overflow-wrap: anywhere; }
 .lesson-content :deep(p) { margin: 1rem 0 1.3rem; line-height: 1.7; }
 .lesson-content :deep(h2) { margin-top: 2.2rem; margin-bottom: 1rem; }

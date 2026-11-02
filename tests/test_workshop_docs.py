@@ -1,93 +1,51 @@
-"""Check published lesson references and mirrored content, not teaching prose."""
-
-from __future__ import annotations
-
-import json
+"""Validate runnable instructions and the published single-workshop lesson set."""
+import ast
 import re
 from pathlib import Path
+from scripts.publish_docs import LESSONS, published_files
 
-ROOT = Path(__file__).resolve().parents[1]
-LESSONS = (
-    "01-first-call.md",
-    "03-conversation.md",
-    "06-agent-loop.md",
-    "04-one-tool.md",
-    "05-better-tools.md",
-    "07-capstone.md",
-)
+ROOT=Path(__file__).resolve().parents[1]
 
 
-def without_frontmatter(text: str) -> str:
-    body = re.sub(r"\A---\n.*?\n---\n", "", text, count=1, flags=re.DOTALL).strip()
-    return re.sub(r"\A# [^\n]+\n+", "", body).strip()
-
-
-def test_active_lessons_exist_and_have_revealable_answers() -> None:
+def test_active_lessons_and_revealable_answers():
     for name in LESSONS:
-        lesson = ROOT / "docs/tasks" / name
-        text = lesson.read_text()
-        assert "<details>" in text, lesson
-        assert text.count("<details>") == text.count("</details>"), lesson
-        assert text.count("<summary>") == text.count("</summary>"), lesson
+        text=(ROOT/'docs/tasks'/name).read_text()
+        assert text.startswith('# ')
+        assert text.count('<details>') == text.count('</details>')
+        assert text.count('<summary>') == text.count('</summary>')
+        assert 'part2/' not in text
 
 
-def test_workshop_markdown_links_resolve() -> None:
-    missing: list[str] = []
-    for path in (ROOT / "docs").rglob("*.md"):
-        for link in re.findall(r"\[[^\]]+\]\(([^)]+\.md)(?:#[^)]+)?\)", path.read_text()):
-            if link.startswith(("http://", "https://", "/")):
-                continue
-            if not (path.parent / link).resolve().is_file():
-                missing.append(f"{path.relative_to(ROOT)}: {link}")
-    assert not missing, "\n".join(missing)
+def test_workshop_links_resolve():
+    files=list((ROOT/'docs/tasks').glob('*.md'))+[ROOT/'docs/welcome.md',ROOT/'docs/home.md',ROOT/'WORKSHOP.md',ROOT/'FACILITATOR.md']
+    missing=[]
+    for path in files:
+        for link in re.findall(r'\[[^\]]+\]\(([^)]+)\)',path.read_text()):
+            if link.startswith(('http:', 'https:', '/', '#')):continue
+            if not (path.parent/link.split('#')[0]).resolve().exists():missing.append((path.name,link))
+    assert not missing
 
 
-def test_lesson_python_and_test_commands_reference_real_files() -> None:
+def test_code_examples_and_local_commands_are_valid():
     for name in LESSONS:
-        text = (ROOT / "docs/tasks" / name).read_text()
-        for command in re.findall(r"```bash\n(.*?)```", text, re.DOTALL):
-            for module in re.findall(r"uv run python -m ([\w.]+)", command):
-                assert (ROOT / (module.replace(".", "/") + ".py")).is_file(), (name, module)
-            for file in re.findall(r"uv run (?:python|pytest) ([\w/]+\.py)", command):
-                assert (ROOT / file).is_file(), (name, file)
+        text=(ROOT/'docs/tasks'/name).read_text()
+        for code in re.findall(r'```python\n(.*?)```',text,re.S):ast.parse(code)
+        for code in re.findall(r'```bash\n(.*?)```',text,re.S):
+            for file in re.findall(r'uv run (?:--group iris )?(?:python|pytest) ([\w/]+\.py)',code):
+                assert (ROOT/file).is_file(),(name,file)
 
 
-def test_sidebar_links_to_every_active_lesson() -> None:
-    sidebar = (ROOT / "docs/_sidebar.md").read_text()
-    for name in LESSONS:
-        assert f"#/tasks/{Path(name).stem})" in sidebar
+def test_published_outputs_match_canonical_sources():
+    if not (ROOT/'docker-workshop/frontend/public').exists():return
+    for path,content in published_files(ROOT).items():
+        assert path.is_file() and path.read_bytes()==content,str(path)
 
 
-def test_docs_include_vscode_panel_bridge() -> None:
-    index = (ROOT / "docs/index.html").read_text()
-    assert "open-vscode-file" in index
-    assert 'a[target="vscode"][href^="/vscode/"]' in index
-    assert "open-docs-route" in index
-
-
-def test_published_lesson_manifest_and_mirrors() -> None:
-    # The student distribution has no frontend sibling inside its workspace.
-    public = ROOT / "docker-workshop/frontend/public/build-steps"
-    if not public.is_dir():
-        return
-    manifest = (public / "manifest.yaml").read_text()
-    assert tuple(re.findall(r"^\s+- file: (\S+)$", manifest, re.MULTILINE)) == LESSONS
-    mirrors = (ROOT / "docker-workshop/docs/tasks", public)
-    for name in LESSONS:
-        expected = without_frontmatter((ROOT / "docs/tasks" / name).read_text())
-        for mirror in mirrors:
-            actual = without_frontmatter((mirror / name).read_text())
-            # Assets are rooted at /images in the guided frontend.
-            actual = actual.replace("](/images/", "](../images/")
-            assert actual == expected, mirror / name
-        for editor_file in re.findall(r"^editorFile: (.+)$", (public / name).read_text(), re.MULTILINE):
-            assert (ROOT / editor_file).is_file(), (name, editor_file)
-
-
-def test_worked_reader_schema_matches_the_actual_tool_contract() -> None:
-    from tools import PLAIN_READ_SCHEMA
-
-    lesson = (ROOT / "docs/tasks/06-agent-loop.md").read_text()
-    examples = re.findall(r"```json\n(.*?)```", lesson, re.DOTALL)
-    assert examples, "The tool walkthrough must show the contract it explains"
-    assert json.loads(examples[0]) == PLAIN_READ_SCHEMA
+def test_slides_are_explicit_placeholders_without_diagrams():
+    decks=list((ROOT/'docs/slides').glob('*.md'))
+    assert len(decks)==4
+    for path in decks:
+        text=path.read_text()
+        assert 'placeholder' in text.lower()
+        assert '![' not in text
+        assert len(text.split()) < 65

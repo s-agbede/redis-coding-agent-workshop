@@ -5,6 +5,7 @@ COPY docker-workshop/frontend/package.json docker-workshop/frontend/package-lock
 RUN npm ci --no-audit --no-fund
 COPY docker-workshop/frontend/ ./
 COPY agent.py /workshop/agent.py
+COPY project /workshop/project
 COPY docker-workshop/workbench/ /workshop/docker-workshop/workbench/
 ENV VUE_APP_BASE_PATH=/guide/
 RUN npm test && npm run typecheck && npm run build

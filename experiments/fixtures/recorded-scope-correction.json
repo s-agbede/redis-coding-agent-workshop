@@ -1,0 +1,42 @@
+{
+  "items": [
+    {
+      "id": "228797dbaef04e57aba56e86dbc7b64d",
+      "text": "In the legacy-ledger Python repository, Poetry is preferred, contrasting with the general preference for using uv in other Python projects.",
+      "createdAt": "2026-10-21T13:43:02.895000Z",
+      "updatedAt": "2026-10-21T13:43:02.895000Z",
+      "memoryType": "user_preference",
+      "sessionId": "iris-exception-20261021-a",
+      "ownerId": "iris-feasibility-20261021-a",
+      "topics": [
+        "Python",
+        "dependency management",
+        "project-specific"
+      ],
+      "attributes": {
+        "preference": "Preserve Poetry for legacy-ledger project; use uv for others.",
+        "replaces": "Use uv for Python projects and ask before adding dependencies.",
+        "scope": "legacy-ledger project"
+      }
+    },
+    {
+      "id": "4b5a1c3ab1bc4e989cc574df65bb0c7e",
+      "text": "The user prefers using uv for Python projects. In disposable Python prototypes, dependencies may be added without asking; in production projects, ask before adding dependencies.",
+      "createdAt": "2026-10-21T12:59:13.085000Z",
+      "updatedAt": "2026-10-21T13:43:05.180000Z",
+      "memoryType": "user_preference",
+      "sessionId": "iris-teach-20261021-a",
+      "ownerId": "iris-feasibility-20261021-a",
+      "topics": [
+        "Python",
+        "dependencies",
+        "uv"
+      ],
+      "attributes": {
+        "preference": "Use uv for Python projects; add dependencies without asking in disposable prototypes, but ask first in production projects.",
+        "replaces": "Ask before adding dependencies for all Python projects.",
+        "scope": "Python projects"
+      }
+    }
+  ]
+}

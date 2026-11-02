@@ -1,7 +1,7 @@
 <template>
   <div id="app">
-    <p v-if="directGuide" class="workbench-link">These are the workshop instructions. <a :href="workbenchUrl">Open the workbench</a> to use VS Code, the terminal and app beside them.</p>
-    <router-view />
+    <p v-if="directGuide" class="workbench-link">These are the workshop instructions. <a :href="workbenchUrl">Open the workbench</a> to use VS Code, the terminal beside them.</p>
+    <router-view :key="$route?.path" />
   </div>
 </template>
 
@@ -39,6 +39,7 @@ body {
 }
 .workbench-link { padding: .75rem 1rem; background: #24334c; }
 .workbench-link a { color: #a9c7ff; }
+
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {

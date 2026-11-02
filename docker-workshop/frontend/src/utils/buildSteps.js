@@ -136,6 +136,7 @@ export async function loadAllBuildSteps() {
           title: step.title || stepDef.title || `Step ${index + 1}`,
           description: step.description || stepDef.description || '',
           editorFile: step.editorFile || '',
+          slides: step.slides || '',
           content: step.content || '',
           action: step.action || null,
           file: stepDef.file

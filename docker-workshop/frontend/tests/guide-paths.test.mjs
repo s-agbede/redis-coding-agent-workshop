@@ -26,3 +26,16 @@ test('compiled guide base and standalone proxy routes both retain their asset an
     else process.env.BASE_URL = previous
   }
 })
+
+test('legacy memory bookmarks redirect to the single workshop', async () => {
+  const { readFile } = await import('node:fs/promises')
+  const source = await readFile(new URL('../src/router/index.js', import.meta.url), 'utf8')
+  const routerBody = source.replace(/^import .*$/gm, '').replace('export default router', 'return router')
+  const router = new Function('createRouter', 'createWebHistory', 'getBasePath', 'Welcome', 'Build', routerBody)(
+    options => options, base => base, () => '/guide', 'welcome', 'build'
+  )
+  assert.equal(router.routes.find(route => route.path === '/part2').redirect, '/')
+  assert.equal(router.routes.find(route => route.path === '/part2/build').redirect, '/build')
+  assert.deepEqual(router.routes.filter(route => route.component).map(route => route.path), ['/', '/build'])
+  assert.ok(router.routes.every(route => !route.props))
+})

@@ -3,8 +3,8 @@
     <div class="intro-container">
       <div class="intro-header">
         <img src="@/assets/logo/small.png" alt="Redis Logo" class="intro-logo" />
-        <h1 class="intro-title">{{ content?.title || 'Build a Coding Agent' }}</h1>
-        <p class="intro-subtitle">{{ content?.subtitle || 'From first principles' }}</p>
+        <h1 class="intro-title">{{ content?.title || 'Give your coding agent memory' }}</h1>
+        <p class="intro-subtitle">{{ content?.subtitle || 'Memory and shared knowledge' }}</p>
       </div>
 
       <div class="intro-description">
@@ -54,8 +54,8 @@ export default {
       if (!this.content) {
         // Use fallback content if file doesn't exist
         this.content = {
-          title: 'Build a Coding Agent',
-          subtitle: 'From first principles',
+          title: 'Give your coding agent memory',
+          subtitle: 'Memory and shared knowledge',
           description: 'Unable to load workshop content. Refresh to try again.',
           estimatedMinutes: 90,
           difficulty: 'Beginner',
@@ -66,8 +66,8 @@ export default {
       this.error = err.message
       // Use fallback content
       this.content = {
-        title: 'Build a Coding Agent',
-        subtitle: 'From first principles',
+        title: 'Give your coding agent memory',
+        subtitle: 'Memory and shared knowledge',
         description: 'Unable to load workshop content. Refresh to try again.',
         estimatedMinutes: 90,
         difficulty: 'Beginner',

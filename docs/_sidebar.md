@@ -1,13 +1,7 @@
-* [Welcome](/docs/?v=docs-links-2#/)
-
-* Workshop
-  * [1. Make your first model call](/docs/?v=docs-links-2#/tasks/01-first-call)
-  * [2. Keep the conversation](/docs/?v=docs-links-2#/tasks/03-conversation)
-  * [3. Let the agent take several steps](/docs/?v=docs-links-2#/tasks/06-agent-loop)
-  * [4. Give the model a file reader](/docs/?v=docs-links-2#/tasks/04-one-tool)
-  * [5. Make the reader useful on larger files](/docs/?v=docs-links-2#/tasks/05-better-tools)
-  * [6. Ask your agent to fix the app](/docs/?v=docs-links-2#/tasks/07-capstone)
-
-* Reference
-  * [Agent components](/docs/?v=docs-links-2#/reference/mental-model)
-  * [Commands and concepts](/docs/?v=docs-links-2#/reference/cheatsheet)
+* [Welcome](#/home)
+* [1. Recap](#/tasks/01-recap)
+* [2. The amnesiac](#/tasks/02-forgetting)
+* [3. Capture](#/tasks/03-capture)
+* [4. Recall](#/tasks/04-recall)
+* [5. Playbook](#/tasks/05-playbook)
+* [6. Verify](#/tasks/06-verify)

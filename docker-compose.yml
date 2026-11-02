@@ -17,7 +17,7 @@ services:
       context: .
       dockerfile: docker-workshop/docker/guided/Dockerfile
     volumes:
-      - ./.workshop:/workspace
+      - ./.workshop-memory:/workspace
       # The previous Alpine environment cannot load Debian native extensions.
       # Keep its volume intact; the workbench has its own reproducible environment.
       - workbench-venv:/opt/student/.venv
@@ -30,6 +30,15 @@ services:
       AGENT_MAX_ITERS: ${AGENT_MAX_ITERS:-25}
       AGENT_REQUEST_TIMEOUT: ${AGENT_REQUEST_TIMEOUT:-90}
       AGENT_AUTO_APPROVE: ${AGENT_AUTO_APPROVE:-}
+      AGENT_MEMORY_URL: ${AGENT_MEMORY_URL:-}
+      AGENT_MEMORY_STORE_ID: ${AGENT_MEMORY_STORE_ID:-}
+      AGENT_MEMORY_API_KEY: ${AGENT_MEMORY_API_KEY:-}
+      PLAYBOOK_DATA_PLANE_URL: ${WORKSHOP_PLAYBOOK_DATA_PLANE_URL:-${PLAYBOOK_DATA_PLANE_URL:-}}
+      PLAYBOOK_PLAYBOOK_ID: ${PLAYBOOK_PLAYBOOK_ID:-}
+      PLAYBOOK_API_KEY: ${PLAYBOOK_API_KEY:-}
+      IRIS_OWNER_ID: ${IRIS_OWNER_ID:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8081/api/health >/dev/null && curl -fsS http://localhost:7681/terminal/ >/dev/null && curl -fsS http://localhost:8080/healthz >/dev/null"]
       interval: 5s

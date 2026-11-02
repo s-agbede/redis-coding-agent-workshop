@@ -1,13 +1,13 @@
 steps:
-  - file: 01-first-call.md
-    title: Make your first model call
-  - file: 03-conversation.md
-    title: Keep the conversation
-  - file: 06-agent-loop.md
-    title: Let the agent take several steps
-  - file: 04-one-tool.md
-    title: Give the model a file reader
-  - file: 05-better-tools.md
-    title: Make the reader useful on larger files
-  - file: 07-capstone.md
-    title: Ask your agent to fix the app
+  - file: 01-recap.md
+    title: Recap: what goes into the request
+  - file: 02-forgetting.md
+    title: The amnesiac and notes on the desk
+  - file: 03-capture.md
+    title: Capture with Redis Agent Memory
+  - file: 04-recall.md
+    title: Recall in a fresh session
+  - file: 05-playbook.md
+    title: The team's way: Redis Agent Playbook
+  - file: 06-verify.md
+    title: Trust, but verify

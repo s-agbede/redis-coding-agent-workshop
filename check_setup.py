@@ -17,18 +17,18 @@ class SetupCheck:
 
 def inspect_setup(root: Path, environ: Mapping[str, str]) -> list[SetupCheck]:
     """Inspect files, installed modules and key presence; perform no network I/O."""
-    files = ("main.py", "tools.py", "agent.py", "verify_capstone.py", "capstone/app.py")
+    files = ("main.py", "tools.py", "agent.py", "runtime.py", "context.py", "playbook.py", "project/validator.py", "project/sample_report.json", "challenge/check_contract.py")
     checks = [
         SetupCheck("Python", sys.version_info >= (3, 10), "Python 3.10+ required; Docker supplies it."),
         SetupCheck(
             "Workspace", all((root / name).is_file() for name in files),
-            "Run from the workshop root (/workspace in the browser Terminal), not inside capstone/.",
+            "Run from the workshop root (/workspace in the browser Terminal), not inside project/.",
         ),
     ]
-    for module in ("openai", "rich", "dotenv", "fastapi", "uvicorn", "pytest"):
+    for module in ("openai", "rich", "dotenv", "redis_agent_memory", "redis_agent_playbook", "pytest"):
         installed = importlib.util.find_spec(module) is not None
         checks.append(SetupCheck(
-            module, installed, "Installed." if installed else "Run uv sync, then retry.",
+            module, installed, "Installed." if installed else "Run uv sync --group iris, then retry.",
         ))
     key = environ.get("AGENT_API_KEY", "").strip()
     configured = bool(key) and key not in {"sk-...", "your-api-key-here", "your-api-key"}
@@ -45,7 +45,7 @@ def inspect_setup(root: Path, environ: Mapping[str, str]) -> list[SetupCheck]:
 def format_report(checks: Sequence[SetupCheck]) -> str:
     lines = ["Local setup check — no model request is made."]
     lines.extend(f"{'OK' if check.passed else 'MISSING'} {check.label}: {check.detail}" for check in checks)
-    lines.append("Starter read_file and loop tests fail until you fill their blanks; that is expected.")
+    lines.append("The coding loop is supplied. Memory exercises start disabled; /status shows the current checkpoint.")
     return "\n".join(lines)
 
 

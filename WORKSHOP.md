@@ -1,51 +1,48 @@
-# Workshop: Build a Coding Agent From First Principles
+# Give your coding agent useful memory
 
-A 90-minute guided workshop for experienced Python developers at Bank of America who are new to LLM applications. One learner-facing **agent.py** grows into the agent that investigates and repairs a supplied FastAPI task board. Start it throughout with `uv run python main.py`.
+**90 minutes. Part 2 of the coding agent workshop.** Extend a working coding agent with **Redis Agent Memory**, so it recalls a developer's preferences across sessions, and **Redis Agent Playbook**, so it retrieves a published team procedure. Then check the code it produces with an independent checker.
+
+**Audience:** software engineers who have used AI agents a little but are not experts. Part 1 is recommended; the recap covers what is needed.
+
+**The through-line:** what should a coding agent know, where does that knowledge come from, and who owns it? Each section adds a source with a wider owner: the conversation, the project, you, the organisation. The close: *three sources, three owners, each one checkable.*
 
 ## Schedule
 
-| Elapsed | Activity | Minutes |
-| --- | --- | --- |
-| 0–2 | Welcome and concrete repair promise | 2 |
-| 2–11 | LLM, OpenAI API and SDK; implement the model request | 9 |
-| 11–20 | Observe missing history; retain it and repeat the follow-up | 9 |
-| 20–35 | PEAS/tool design; build dispatch, feedback and repetition | 15 |
-| 35–45 | Fix the missing reader; compare evidence with its earlier error | 10 |
-| 45–55 | Improve bounded output and advertise paging arguments | 10 |
-| 55–80 | Add supplied actions; repair and independently evaluate the app | 25 |
-| 80–90 | Questions, catch-up and troubleshooting buffer | 10 |
+Each section is an instructor demo followed by a five-minute *Your turn* card. Attendees copy a cumulative snapshot from `solutions/steps/` rather than typing code: the code is teaching material.
 
-Prepare API access and independent learner runtimes before the session. These timings require a timed human rehearsal; automated replay does not validate pacing.
+| Elapsed | Section | Demo | Your turn | Attendees confirm |
+| --- | --- | --- | --- | --- |
+| 0–4 | [Recap: what goes into the request](docs/tasks/01-recap.md) | 4 | — | Agent running; `/status` shows all capabilities disabled |
+| 4–17 | [The amnesiac and notes on the desk](docs/tasks/02-forgetting.md) | 8 | 5 | Preference gone after `/new-session`; uv line in `AGENTS.md` survives |
+| 17–32 | [Capture with Redis Agent Memory](docs/tasks/03-capture.md) | 10 | 5 | `/events` shows their exchange |
+| 32–47 | [Recall in a fresh session](docs/tasks/04-recall.md) | 10 | 5 | `/memories` lists the preference; `/view-context` shows it retrieved |
+| 47–64 | [The team's way: Redis Agent Playbook](docs/tasks/05-playbook.md) | 12 | 5 | `/skills` shows the instructor's published source and version |
+| 64–75 | [Trust, but verify](docs/tasks/06-verify.md) | 6 | 5 | `/verify` passes; they name a rule from the procedure |
+| 75–85 | Discussion | | | Governance; where each source fits in their team |
+| 85–90 | Buffer | | | |
 
-## One evolving program
+Capture and recall are separate blocks on purpose: attendees capture during block 3, and Redis Agent Memory extracts the preference in the background while the instructor demonstrates recall.
 
-Learners edit `ask`, `remember`, `run_agent` and `read_file`, plus explicit `TOOL_SCHEMAS` and `REGISTRY` assignments. The initial program has one request and deliberately forgets earlier exchanges. Later TODOs do not block that request. The tool lesson advertises discovery and an unfinished reader, then replaces the one-call function with the learner's own bounded loop. The reader error becomes feedback rather than a hidden completed fallback.
+The instructor publishes the team skill **once**. Attendees only retrieve it, by the entry ID in `PLAYBOOK_SKILL_ID`, with read-only Playbook access.
 
-`main.py` imports the functions and tool assignments from `agent.py` and supplies client setup, interactive input and project selection. `tools.py` supplies schemas, bounded output formatting and other actions. `ui.py` displays request/result/answer panels and asks for command approval. Request summaries show count and roles; full message previews are optional. Those files support the learner file without requiring a giant monolith.
+## Learning outcomes
 
-The question stays natural: “What's the latest release decision?” Project context names the evidence directory; the model discovers filenames and chooses subsequent reads. No prompt dictates offsets, and no code introspects the learner function to switch stages. When paging is implemented, the learner explicitly advertises the schema that accepts its new arguments.
+Attendees can:
 
-Each coding lesson follows observe → predict → edit → rerun → inspect the change. PEAS is a short discussion attached to tools and evaluation, not a separate non-coding lesson. Model outputs are not prescribed: a guess without evidence becomes a question to investigate, not proof the demo succeeded.
+- explain why a conversational preference disappears in a new session while a project file survives;
+- describe how Redis Agent Memory stores session events, extracts long-term preferences in the background, and returns them through owner-scoped search;
+- show that recalled memory is context the application chooses to add, not something the model remembers;
+- explain how Redis Agent Playbook publishes a versioned procedure that many agents and projects retrieve identically;
+- locate each knowledge source in an actual model request and judge generated code with independent evidence.
 
-## Meaningful final task
+Keep the commenting preference out of `AGENTS.md` throughout, so recall evidence stays distinct from file persistence.
 
-Register supplied editing and command tools in the same file, then start `uv run python main.py --project capstone`. The argument selects the project; it does not select an implementation. Reproduce the lost-completion bug, propose a cause, let the accumulated agent investigate, inspect the diff and explain why the later read changes. Run the independent verifier and check a fresh browser task.
+## Assets
 
-Shell commands require approval. Editing tools act directly on the selected disposable project. Project selection is a convenience, not isolation. A denied command is feedback; it never establishes a check passed.
+- [Learner welcome](docs/welcome.md)
+- [Facilitator guide](FACILITATOR.md)
+- [Supplied skill](skills/report-validation/SKILL.md)
+- [Challenge contract](challenge/CONTRACT.md)
+- [Implementation notes](IMPLEMENTATION.md)
 
-The app stores tasks in memory. Completion must survive a later request and browser refresh in the same process. Persistence across server restarts is outside the ticket. The unchanged acceptance checker covers the repair and existing behaviors, including reopening and deleting tasks.
-
-## Evaluation and catch-up
-
-Unit checks appear in the final evaluation: real-file tool tests, prepared-reply harness tests, then independent HTTP application checks. The deterministic replay applies the published snippets and cumulative catch-up files in disposable workspaces created from the maintained starter and runs the actual agent CLI with test-only provider transport. It validates plumbing, not live model choices or learner motivation.
-
-Each lesson includes copyable function answers and an explicit cumulative file in `solutions/steps/`. Learners preserve their attempt before copying one. `solutions/agent.py` is the complete reference. No solution is automatically loaded by the normal learner program. The generated learner workspace starts with the seeded application bug.
-
-See [FACILITATOR.md](FACILITATOR.md) for preparation and the opening demo. Historical research remains in `archive/`; the learner workspace contains only the current exercises.
-
-## Sources
-
-- [OpenAI Chat Completions](https://developers.openai.com/api/reference/chat-completions/overview) and [tool calling](https://developers.openai.com/api/docs/guides/function-calling#how-it-works).
-- [Vercel: From chat to agent](https://vercel.com/academy/build-ai-agent-harness/from-chat-to-agent): evolve the same program as limitations motivate capabilities.
-- [Designing agents from the outside in](https://samuelagbede.com/posts/designing-ai-agents-from-the-outside-in/): PEAS design discussion.
-- [Demystifying evals](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents): separate behavior, outcome and evaluation evidence.
+Slides are labelled placeholders until slide design is done; teach from the lesson text.

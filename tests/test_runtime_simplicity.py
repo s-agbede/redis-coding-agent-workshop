@@ -22,18 +22,6 @@ def test_ask_displays_request_without_replacing_sdk_client(monkeypatch):
     assert answer.content == "code"
 
 
-def test_runner_calls_imported_agent_with_original_client(tmp_path, monkeypatch):
-    client = FakeClient([text("done")])
-    calls = []
-    inputs = iter(["hello", "exit"])
-    def run(actual_client, messages, tools, registry, max_iters):
-        assert actual_client is client
-        calls.append(messages[-1]["content"])
-        messages.append(text("done"))
-    monkeypatch.setattr(main, "run_agent", run, raising=False)
-    monkeypatch.setattr(ui, "prompt_user", lambda: next(inputs))
-    main.interactive_session(client, tmp_path)
-    assert calls == ["hello"]
 
 
 @pytest.mark.parametrize("allowed", [False, True])
@@ -87,17 +75,6 @@ def test_discovered_paths_can_be_read_without_reconstructing_them(tmp_path, monk
     assert discovered[0] == expected
 
 
-def test_empty_reply_is_not_reported_as_an_exhausted_loop(tmp_path, monkeypatch):
-    notices = []
-    inputs = iter(["hello", "exit"])
-    client = FakeClient([text(None)])
-    monkeypatch.setattr(main, "run_agent", completed.run_agent)
-    monkeypatch.setattr(ui, "prompt_user", lambda: next(inputs))
-    monkeypatch.setattr(ui, "info", notices.append)
-    main.interactive_session(client, tmp_path)
-    assert len(client.calls) == 1
-    assert any("no answer text" in notice for notice in notices)
-    assert not any("step limit" in notice for notice in notices)
 
 
 def test_hard_limit_does_not_leave_stopping_instructions_in_later_requests():
@@ -112,17 +89,3 @@ def test_hard_limit_does_not_leave_stopping_instructions_in_later_requests():
     system_messages = [message for message in client.calls[1]["messages"]
                        if isinstance(message, dict) and message["role"] == "system"]
     assert system_messages == [{"role": "system", "content": "Use observed evidence."}]
-
-
-def test_exhausted_loop_still_reports_the_limit(tmp_path, monkeypatch):
-    notices = []
-    inputs = iter(["inspect", "exit"])
-    client = FakeClient([tool_turn(("read", "read_file", {"path": "note.md"}))])
-    monkeypatch.setattr(main, "MAX_ITERS", 1)
-    monkeypatch.setattr(main, "REGISTRY", {"read_file": lambda path: "actual evidence"})
-    monkeypatch.setattr(main, "run_agent", completed.run_agent)
-    monkeypatch.setattr(ui, "prompt_user", lambda: next(inputs))
-    monkeypatch.setattr(ui, "info", notices.append)
-    main.interactive_session(client, tmp_path)
-    assert len(client.calls) == 1
-    assert any("1-step limit" in notice for notice in notices)

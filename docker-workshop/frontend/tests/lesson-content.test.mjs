@@ -85,10 +85,10 @@ test('clipboard denial or absence has an actionable visible error', async () => 
 })
 
 test('inline code and bold file references open only files available in the workspace', () => {
-  const html = renderMarkdown('Open **agent.py**. Inspect `checkpoints/history.py`, `missing.py` and `read_file`.\n\n| Source |\n| --- |\n| **`tools.py`** |')
+  const html = renderMarkdown('Open **agent.py**. Inspect `runtime.py`, `missing.py` and `read_file`.\n\n| Source |\n| --- |\n| **`tools.py`** |')
   assert.equal(typeof lessonContent.withFileButtons, 'function')
-  const result = lessonContent.withFileButtons(html, ['agent.py', 'checkpoints/history.py', 'tools.py'])
-  for (const path of ['agent.py', 'checkpoints/history.py', 'tools.py']) {
+  const result = lessonContent.withFileButtons(html, ['agent.py', 'runtime.py', 'tools.py'])
+  for (const path of ['agent.py', 'runtime.py', 'tools.py']) {
     assert.ok(result.includes(`data-open-file="${path}"`))
     assert.ok(result.includes(`aria-label="Open ${path} in editor"`))
   }

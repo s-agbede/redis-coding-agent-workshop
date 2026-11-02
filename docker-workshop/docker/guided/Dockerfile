@@ -26,13 +26,19 @@ COPY docker-workshop/docker/guided/terminal.bash ./
 # Preinstall learner dependencies outside the host's macOS virtual environment.
 WORKDIR /opt/student
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen
+RUN uv sync --frozen --group iris
 
-COPY agent.py main.py tools.py ui.py demo.py preview.py check_setup.py verify_capstone.py pyproject.toml uv.lock README.md WORKSHOP.md FACILITATOR.md /opt/workshop/
-COPY capstone /opt/workshop/capstone
-COPY checkpoints /opt/workshop/checkpoints
+COPY agent.py main.py tools.py ui.py check_setup.py pyproject.toml uv.lock README.md WORKSHOP.md FACILITATOR.md /opt/workshop/
+COPY runtime.py context.py playbook.py IMPLEMENTATION.md /opt/workshop/
+COPY project /opt/workshop/project
+COPY project-review /opt/workshop/project-review
+COPY challenge /opt/workshop/challenge
+COPY skills /opt/workshop/skills
+COPY docs /opt/workshop/docs
 COPY solutions /opt/workshop/solutions
 COPY tests /opt/workshop/tests
+COPY scripts /opt/workshop/scripts
+COPY experiments /opt/workshop/experiments
 COPY scripts/prepare_workspace.py /opt/workshop/prepare_workspace.py
 COPY docker-workshop/docker/guided/start.sh /start.sh
 COPY docker-workshop/docker/guided/tmux.conf /etc/tmux.conf

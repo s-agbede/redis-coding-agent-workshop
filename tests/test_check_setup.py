@@ -7,7 +7,7 @@ import check_setup
 
 @pytest.fixture
 def workspace(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    for name in ("main.py", "tools.py", "agent.py", "verify_capstone.py", "capstone/app.py"):
+    for name in ("main.py", "tools.py", "agent.py", "runtime.py", "context.py", "playbook.py", "project/validator.py", "project/sample_report.json", "challenge/check_contract.py"):
         path = tmp_path / name
         path.parent.mkdir(exist_ok=True)
         path.touch()

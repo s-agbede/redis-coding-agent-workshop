@@ -601,5 +601,7 @@ async function refreshPreviewSelection() {
 
 // Initialize when DOM is ready
 init();
-refreshPreviewSelection();
-setInterval(refreshPreviewSelection, 2000);
+if (config.panels.some(panel => panel.id === 'app')) {
+  refreshPreviewSelection();
+  setInterval(refreshPreviewSelection, 2000);
+}

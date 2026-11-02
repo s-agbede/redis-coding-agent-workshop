@@ -19,6 +19,7 @@ const LessonContent = await component('../src/components/LessonContent.vue', {
 const buildImports = {
   '@redis-workshop/components/components/WorkshopHeader.vue': Stub,
   '../components/LessonContent.vue': LessonContent,
+  '../components/LessonSlides.vue': Stub,
   '../utils/buildSteps': { loadAllBuildSteps: async () => lessons, markdownToHtml: content => `<p>${content}</p>` },
   '../utils/basePath': { getBasePath: () => '/hub/workshop/agent' }
 }
@@ -398,7 +399,7 @@ test('new curriculum ignores old numeric lesson positions and restores by file n
   let page = await mount(Build)
   assert.equal(page.vm.currentBuildStep, 0)
   await page.vm.goToStep(1)
-  assert.equal(sessionStorage.getItem('coding-agent-workshop-lesson-v3'), 'two.md')
+  assert.equal(sessionStorage.getItem('coding-agent-memory-lesson-v1'), 'two.md')
   page.unmount()
   page = await mount(Build)
   assert.equal(page.vm.currentBuildStep, 1)
@@ -459,4 +460,29 @@ test('the standalone development guide links to the running workbench, not itsel
     if (previous === undefined) delete process.env.NODE_ENV
     else process.env.NODE_ENV = previous
   }
+})
+
+
+test('the single welcome starts the memory lessons at the root build route', async () => {
+  browserStorage()
+  const Welcome = await component('../src/views/Welcome.vue', {
+    '../utils/pageContent': { loadWelcomeContent: async () => ({ title: 'Give your coding agent memory', htmlContent: 'Ready' }) },
+    '../components/LessonContent.vue': LessonContent
+  })
+  const routes = []
+  const page = await mount(Welcome, {}, { $router: { push: route => routes.push(route) } })
+  assert.match(textOf(page.root), /Give your coding agent memory/)
+  page.vm.startWorkshop()
+  assert.deepEqual(routes, ['/build'])
+  page.unmount()
+})
+
+test('the guide has no workshop part chooser', async () => {
+  guideBrowser()
+  const App = await component('../src/App.vue')
+  App.components = { RouterView: Stub }
+  const page = await mount(App)
+  assert.doesNotMatch(textOf(page.root), /Part 1|Part 2/)
+  assert.equal(findAll(page.root, el => el.type === 'nav').length, 0)
+  page.unmount()
 })

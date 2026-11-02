@@ -13,6 +13,10 @@ dependencies = [
 
 [dependency-groups]
 dev = ["pytest>=8.0"]
+iris = [
+    "redis-agent-memory>=0.4.1",
+    "redis-agent-playbook>=0.1.0b1",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

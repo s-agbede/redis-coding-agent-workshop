@@ -2,7 +2,7 @@
   <div class="workshop-build">
     <WorkshopHeader
       :hub-url="homeUrl"
-      title="Build a coding agent"
+      title="Give your coding agent memory"
       :steps="['Welcome', 'Workshop']"
       :current-step="2"
       :clickable="true"
@@ -50,6 +50,7 @@
           <div class="step-content">
             <button v-if="currentStep.editorFile" class="open-file" @click="openFile(currentStep.editorFile)">Open {{ currentStep.editorFile }}</button>
             <h2 ref="stepHeading" tabindex="-1" class="step-title">{{ currentStep.title }}</h2>
+            <LessonSlides v-if="currentStep.slides" :key="currentStep.file" :src="currentStep.slides" />
             <LessonContent class="step-description" :html="renderedContent" :file-paths="filePaths" :terminal-available="terminalAvailable" @open-file="openFile" @show-terminal="showTerminal" />
             
             <!-- Step Action (if defined) -->
@@ -82,7 +83,7 @@
             <button 
               v-else
               class="step-nav-btn step-nav-btn--complete" 
-              @click="$router.push('/')"
+              @click="$router.push(welcomeRoute)"
             >
               Back to welcome
             </button>
@@ -98,14 +99,14 @@
 import WorkshopHeader from '@redis-workshop/components/components/WorkshopHeader.vue'
 import { loadAllBuildSteps, markdownToHtml } from '../utils/buildSteps'
 import LessonContent from '../components/LessonContent.vue'
+import LessonSlides from '../components/LessonSlides.vue'
 import { getBasePath } from '../utils/basePath'
 
 export default {
   name: 'WorkshopBuild',
-  components: { WorkshopHeader, LessonContent },
+  components: { WorkshopHeader, LessonContent, LessonSlides },
   data() {
     return {
-      homeUrl: `${getBasePath()}/`,
       buildSteps: [],
       currentBuildStep: 0,
       visitedSteps: [],
@@ -117,6 +118,10 @@ export default {
     }
   },
   computed: {
+    welcomeRoute() { return '/' },
+    buildRoute() { return '/build' },
+    homeUrl() { return `${getBasePath()}${this.welcomeRoute}` },
+    storageKey() { return 'coding-agent-memory-lesson-v1' },
     terminalAvailable() {
       return !!window.parent && window.parent !== window
     },
@@ -160,13 +165,13 @@ export default {
       return true
     },
     navigateToPhase(step) {
-      this.$router.push(step === 1 ? '/' : '/build')
+      this.$router.push(step === 1 ? this.welcomeRoute : this.buildRoute)
     },
     async goToStep(index) {
       if (index < 0 || index >= this.buildSteps.length) return
       this.currentBuildStep = index
       if (!this.visitedSteps.includes(index)) this.visitedSteps.push(index)
-      try { sessionStorage.setItem('coding-agent-workshop-lesson-v3', this.currentStep.file) }
+      try { sessionStorage.setItem(this.storageKey, this.currentStep.file) }
       catch { this.navigationError = 'Your current lesson cannot be saved in this browser. Navigation still works.' }
       await this.$nextTick()
       this.$refs.stepHeading?.focus({ preventScroll: true })
@@ -181,8 +186,10 @@ export default {
     try {
       this.buildSteps = await loadAllBuildSteps()
       let storedStep = 0
-      try { storedStep = this.buildSteps.findIndex(step => step.file === sessionStorage.getItem('coding-agent-workshop-lesson-v3')) }
+      try { storedStep = this.buildSteps.findIndex(step => step.file === sessionStorage.getItem(this.storageKey)) }
       catch { this.navigationError = 'Your current lesson cannot be saved in this browser. Navigation still works.' }
+      const linkedStep = this.buildSteps.findIndex(step => step.file === this.$route?.query?.lesson)
+      if (linkedStep >= 0) storedStep = linkedStep
       this.loadingSteps = false
       await this.goToStep(storedStep >= 0 ? storedStep : 0)
     } catch (err) {

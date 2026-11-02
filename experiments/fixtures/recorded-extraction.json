@@ -1,0 +1,60 @@
+{
+  "action": "inspect",
+  "owner": "iris-feasibility-20261021-a",
+  "session": "iris-teach-20261021-a",
+  "session_memory": {
+    "sessionId": "iris-teach-20261021-a",
+    "ownerId": "iris-feasibility-20261021-a",
+    "events": [
+      {
+        "eventId": "6de5a7e66055469babda7477d5707e2d",
+        "actorId": "iris-feasibility-20261021-a",
+        "sessionId": "iris-teach-20261021-a",
+        "role": "USER",
+        "content": [
+          {
+            "text": "Use uv for Python projects, and ask before adding dependencies."
+          }
+        ],
+        "createdAt": "2026-10-21T12:58:26.852000Z",
+        "systemTimestamp": "2026-10-21T12:58:28.282000Z"
+      },
+      {
+        "eventId": "3a6553372c44403c98665d386770747f",
+        "actorId": "iris-workshop-assistant",
+        "sessionId": "iris-teach-20261021-a",
+        "role": "ASSISTANT",
+        "content": [
+          {
+            "text": "Got it\u2014I'll use uv for Python projects and ask before adding any dependencies. Would you like me to save this as a preference for future chats?"
+          }
+        ],
+        "createdAt": "2026-10-21T12:58:35.551000Z",
+        "systemTimestamp": "2026-10-21T12:58:36.199000Z"
+      }
+    ]
+  },
+  "retrieval": {
+    "items": [
+      {
+        "id": "4b5a1c3ab1bc4e989cc574df65bb0c7e",
+        "text": "The user prefers using uv for Python projects and wants to be asked before adding dependencies.",
+        "createdAt": "2026-10-21T12:59:13.085000Z",
+        "updatedAt": "2026-10-21T12:59:13.085000Z",
+        "memoryType": "user_preference",
+        "sessionId": "iris-teach-20261021-a",
+        "ownerId": "iris-feasibility-20261021-a",
+        "topics": [
+          "Python",
+          "dependencies",
+          "uv"
+        ],
+        "attributes": {
+          "preference": "Use uv for Python projects and ask before adding dependencies.",
+          "replaces": "",
+          "scope": "Python projects"
+        }
+      }
+    ]
+  }
+}

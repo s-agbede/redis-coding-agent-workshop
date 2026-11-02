@@ -19,7 +19,7 @@ Open **http://localhost:8080**. `WORKSHOP_PORT` chooses another port;
 `WORKSHOP_BIND_ADDRESS` defaults to `0.0.0.0` for hosted labs; use `127.0.0.1` for local-only access. Each learner needs their own stack.
 The first build downloads VS Code and the locked Python dependencies.
 
-The Instructions panel guides you through **Welcome → Workshop**. The six lessons grow one `agent.py`: model call, history, tool loop, reader, paging and repair actions. PEAS is integrated into tool design. The final lesson asks the learner's agent to repair and test the task board.
+The Instructions panel guides you through **Welcome → Workshop**. The seven lessons start with a supplied coding agent, then add persistent project instructions, session-event capture, preference recall and a shared procedure. The final lesson generates and independently checks a report validator. Slides are labelled placeholders.
 
 ## Workbench panels
 
@@ -52,7 +52,6 @@ both services with `bash start.sh` from the repository root.
 | Instructions | Follow the lessons and open hints or answers when useful. |
 | Code | Edit workshop files in VS Code. Click underlined file names in lessons to reveal them here, or use Explorer. Save with Ctrl/Cmd+S. |
 | Terminal | Run code sends a lesson shell command here. Read its output. Ctrl+C interrupts; `exit` leaves an agent conversation. |
-| App Preview | View the target task-list app. Its server starts automatically; open it from the panel menu. |
 
 Use each panel's expand/restore control, drag a divider to resize, and use the
 menu to show or hide panels. Layout changes retain editor buffers and terminal
@@ -153,5 +152,5 @@ interface uses code-server. Open the root URL to use lessons and Code together.
 - `frontend/`: guided lessons, static production build and proxy.
 - `backend/`: typed file API; the guide uses its workspace listing for file links.
 - `docker/guided/`: VS Code, managed Python, API and ttyd/tmux runtime.
-- Root `.workshop/`: generated learner files; maintained source lives at the repository root.
+- Root `.workshop-memory/`: generated learner files; maintained source lives at the repository root.
 - `vendor/workshop-front-end-components/`: retained shared header and Markdown renderer.
