@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def workspace(tmp_path: Path) -> Path:
     (tmp_path/'scripts').mkdir()
     shutil.copy2(ROOT/'scripts/publish_docs.py', tmp_path/'scripts/publish_docs.py')
-    for name in ('docs', 'project', 'challenge', 'skills', 'solutions'):
+    for name in ('docs', 'project', 'skills', 'solutions'):
         shutil.copytree(ROOT/name, tmp_path/name, ignore=shutil.ignore_patterns('__pycache__'))
     return tmp_path
 
@@ -26,13 +26,13 @@ def test_single_workshop_order_slides_and_editor_paths(tmp_path):
     manifest=(public/'build-steps/manifest.yaml').read_text()
     assert [line.split(': ',1)[1] for line in manifest.splitlines() if '- file:' in line] == list(LESSONS)
     recap=(public/'build-steps/01-recap.md').read_text()
-    assert 'slides: /slides/01-recap.md' in recap
+    assert 'slides:' not in recap
     assert 'editorFile: agent.py' in recap
     assert 'editorFile: project/AGENTS.md' in (public/'build-steps/02-forgetting.md').read_text()
-    assert (public/'slides/01-recap.md').read_bytes() == (root/'docs/slides/01-recap.md').read_bytes()
     assert (public/'skills/report-validation/SKILL.md').is_file()
-    assert (public/'challenge/CONTRACT.md').is_file()
+    assert (public/'project/tests/test_validator.py').is_file()
     assert not (public/'part2').exists()
+    assert 'title: Give a coding agent useful memory' in (public/'welcome.md').read_text()
     assert publish(root,'--check').returncode == 0
 
 

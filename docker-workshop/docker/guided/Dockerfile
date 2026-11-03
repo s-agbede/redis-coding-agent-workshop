@@ -28,18 +28,16 @@ WORKDIR /opt/student
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --group iris
 
-COPY agent.py main.py tools.py ui.py check_setup.py pyproject.toml uv.lock README.md WORKSHOP.md FACILITATOR.md /opt/workshop/
-COPY runtime.py context.py playbook.py IMPLEMENTATION.md /opt/workshop/
+COPY agent.py main.py tools.py ui.py pyproject.toml uv.lock README.md WORKSHOP.md FACILITATOR.md /opt/workshop/
+COPY runtime.py context.py playbook.py /opt/workshop/
 COPY project /opt/workshop/project
-COPY project-review /opt/workshop/project-review
-COPY challenge /opt/workshop/challenge
 COPY skills /opt/workshop/skills
 COPY docs /opt/workshop/docs
 COPY solutions /opt/workshop/solutions
 COPY tests /opt/workshop/tests
 COPY scripts /opt/workshop/scripts
-COPY experiments /opt/workshop/experiments
 COPY scripts/prepare_workspace.py /opt/workshop/prepare_workspace.py
+COPY agent-memory/inspector.py agent-memory/inspector.html /opt/agent-memory/
 COPY docker-workshop/docker/guided/start.sh /start.sh
 COPY docker-workshop/docker/guided/tmux.conf /etc/tmux.conf
 RUN chmod +x /start.sh
@@ -48,6 +46,6 @@ WORKDIR /workspace
 ENV WORKSPACE_ROOT=/workspace
 ENV UV_PROJECT_ENVIRONMENT=/opt/student/.venv
 ENV PATH=/opt/student/.venv/bin:$PATH
-EXPOSE 7681 8080 8081 8000
+EXPOSE 7681 8080 8081 8000 8093
 ENTRYPOINT []
 CMD ["/start.sh"]

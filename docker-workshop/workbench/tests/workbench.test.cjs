@@ -26,7 +26,7 @@ function harness() {
     setAttribute(name, value) { this.attributes[name] = value; },
     querySelector(selector) { return this.children[selector]; },
   });
-  for (const id of ['sidebar', 'panel-vscode', 'panel-terminal', 'panel-app']) {
+  for (const id of ['sidebar', 'panel-vscode', 'panel-terminal', 'panel-memory', 'panel-insight', 'panel-app']) {
     const section = makeElement();
     const frame = makeElement();
     frame.contentWindow = {};
@@ -40,7 +40,7 @@ function harness() {
     section.children['.maximize-btn'] = button;
     elements.set(id, section);
   }
-  for (const id of ['rightStack', 'verticalResizer', 'container', 'menu-sidebar', 'menu-vscode', 'menu-terminal', 'menu-app']) elements.set(id, makeElement());
+  for (const id of ['rightStack', 'verticalResizer', 'container', 'menu-sidebar', 'menu-vscode', 'menu-terminal', 'menu-memory', 'menu-insight', 'menu-app']) elements.set(id, makeElement());
   const document = {
     getElementById: (id) => elements.get(id),
     querySelectorAll: (selector) => selector === 'iframe' ? [...elements.values()].flatMap(e => e.children.iframe ? [e.children.iframe] : []) : [],
@@ -50,7 +50,7 @@ function harness() {
   });
   vm.runInContext(readFileSync(resolve(root, 'config.js'), 'utf8'), context);
   vm.runInContext(script.split('// Initialize when DOM is ready')[0], context);
-  vm.runInContext(`panelState = {vscode:{visible:true},terminal:{visible:true},app:{visible:false}};
+  vm.runInContext(`panelState = {vscode:{visible:true},terminal:{visible:true},memory:{visible:false},insight:{visible:false},app:{visible:false}};
     rebuildHorizontalResizers = () => {};
     buildPanels = () => { throw new Error('Panel rebuild destroys iframe sessions'); };
     buildMenu = () => {};`, context);
@@ -312,10 +312,11 @@ test('demo preview reveals the app, labels it, and reloads when learner preview 
   assert.equal(reloads, 2);
 });
 
-test('memory workbench offers only Code and Terminal beside Instructions', () => {
+test('memory workbench shows Code and Terminal, with Agent Memory and Redis Insight hidden until opened', () => {
   const context = vm.createContext({});
   vm.runInContext(readFileSync(resolve(root, 'config.js'), 'utf8'), context);
   const panels = vm.runInContext('config.panels.map(panel => panel.id)', context);
-  assert.deepEqual(Array.from(panels), ['vscode', 'terminal']);
+  assert.deepEqual(Array.from(panels), ['vscode', 'terminal', 'memory', 'insight']);
+  assert.deepEqual(Array.from(vm.runInContext('config.panels.filter(panel => panel.visible).map(panel => panel.id)', context)), ['vscode', 'terminal']);
   assert.equal(vm.runInContext('config.title', context), 'Give your coding agent memory');
 });

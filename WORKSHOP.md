@@ -1,48 +1,40 @@
 # Give your coding agent useful memory
 
-**90 minutes. Part 2 of the coding agent workshop.** Extend a working coding agent with **Redis Agent Memory**, so it recalls a developer's preferences across sessions, and **Redis Agent Playbook**, so it retrieves a published team procedure. Then check the code it produces with an independent checker.
+**90 minutes, Part 2 of the coding agent workshop.** Give a working coding agent **Redis Agent Memory**, so it remembers a developer's preferences across sessions, and **Redis Agent Playbook**, so it follows the team's published procedure. Then check its work with the project's tests.
 
-**Audience:** software engineers who have used AI agents a little but are not experts. Part 1 is recommended; the recap covers what is needed.
+**Audience:** software engineers who have used AI agents a little. Part 1 helps; the recap covers what's needed.
 
-**The through-line:** what should a coding agent know, where does that knowledge come from, and who owns it? Each section adds a source with a wider owner: the conversation, the project, you, the organisation. The close: *three sources, three owners, each one checkable.*
+**The question:** what should a coding agent know, where does that knowledge come from, and who owns it? Each section adds a source with a wider owner: the conversation, the project, you, the organisation.
 
 ## Schedule
 
-Each section is an instructor demo followed by a five-minute *Your turn* card. Attendees copy a cumulative snapshot from `solutions/steps/` rather than typing code: the code is teaching material.
+Each section is an instructor demo followed by five minutes of hands-on. Attendees copy a ready-made `agent.py` from `solutions/steps/` instead of typing code.
 
-| Elapsed | Section | Demo | Your turn | Attendees confirm |
-| --- | --- | --- | --- | --- |
-| 0–4 | [Recap: what goes into the request](docs/tasks/01-recap.md) | 4 | — | Agent running; `/status` shows all capabilities disabled |
-| 4–17 | [The amnesiac and notes on the desk](docs/tasks/02-forgetting.md) | 8 | 5 | Preference gone after `/new-session`; uv line in `AGENTS.md` survives |
-| 17–32 | [Capture with Redis Agent Memory](docs/tasks/03-capture.md) | 10 | 5 | `/events` shows their exchange |
-| 32–47 | [Recall in a fresh session](docs/tasks/04-recall.md) | 10 | 5 | `/memories` lists the preference; `/view-context` shows it retrieved |
-| 47–64 | [The team's way: Redis Agent Playbook](docs/tasks/05-playbook.md) | 12 | 5 | `/skills` shows the instructor's published source and version |
-| 64–75 | [Trust, but verify](docs/tasks/06-verify.md) | 6 | 5 | `/verify` passes; they name a rule from the procedure |
-| 75–85 | Discussion | | | Governance; where each source fits in their team |
-| 85–90 | Buffer | | | |
+| Elapsed | Section | Demo | Your turn |
+| --- | --- | --- | --- |
+| 0–4 | [Recap: what goes into the request](docs/tasks/01-recap.md) | 4 | — |
+| 4–17 | [The amnesiac and notes on the desk](docs/tasks/02-forgetting.md) | 8 | 5 |
+| 17–32 | [Capture with Redis Agent Memory](docs/tasks/03-capture.md) | 10 | 5 |
+| 32–47 | [Recall in a fresh session](docs/tasks/04-recall.md) | 10 | 5 |
+| 47–64 | [The team's way: Redis Agent Playbook](docs/tasks/05-playbook.md) | 12 | 5 |
+| 64–75 | [Trust, but verify](docs/tasks/06-verify.md) | 6 | 5 |
+| 75–85 | Discussion | | |
+| 85–90 | Buffer | | |
 
-Capture and recall are separate blocks on purpose: attendees capture during block 3, and Redis Agent Memory extracts the preference in the background while the instructor demonstrates recall.
+Extraction runs in the background while the instructor demonstrates recall, so attendees' preferences are ready by their next turn. The instructor publishes the team skill once; attendees only read it.
 
-The instructor publishes the team skill **once**. Attendees only retrieve it, by the entry ID in `PLAYBOOK_SKILL_ID`, with read-only Playbook access.
+## The running example
 
-## Learning outcomes
+| Knowledge | Example | Home |
+| --- | --- | --- |
+| Project convention | "We target Python 3.12." | `AGENTS.md` |
+| Personal preference | "I like Google-style docstrings." | Redis Agent Memory |
+| Team rule | How report rows are validated | Redis Agent Playbook |
 
-Attendees can:
-
-- explain why a conversational preference disappears in a new session while a project file survives;
-- describe how Redis Agent Memory stores session events, extracts long-term preferences in the background, and returns them through owner-scoped search;
-- show that recalled memory is context the application chooses to add, not something the model remembers;
-- explain how Redis Agent Playbook publishes a versioned procedure that many agents and projects retrieve identically;
-- locate each knowledge source in an actual model request and judge generated code with independent evidence.
-
-Keep the commenting preference out of `AGENTS.md` throughout, so recall evidence stays distinct from file persistence.
+The final task: "Implement `validate_report` in `validator.py` and make the tests pass."
 
 ## Assets
 
-- [Learner welcome](docs/welcome.md)
-- [Facilitator guide](FACILITATOR.md)
-- [Supplied skill](skills/report-validation/SKILL.md)
-- [Challenge contract](challenge/CONTRACT.md)
-- [Implementation notes](IMPLEMENTATION.md)
-
-Slides are labelled placeholders until slide design is done; teach from the lesson text.
+- [Learner welcome](docs/welcome.md) and [facilitator guide](FACILITATOR.md)
+- [Team skill](skills/report-validation/SKILL.md) and the [project](project/AGENTS.md) the agent works in
+- **Presenter deck:** [Give a Coding Agent Useful Memory](https://claude.ai/artifact/P3PvggzgEereLL3s1BcAEa), with speaker notes. Private until you share it.

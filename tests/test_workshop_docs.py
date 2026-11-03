@@ -41,11 +41,6 @@ def test_published_outputs_match_canonical_sources():
         assert path.is_file() and path.read_bytes()==content,str(path)
 
 
-def test_slides_are_explicit_placeholders_without_diagrams():
-    decks=list((ROOT/'docs/slides').glob('*.md'))
-    assert len(decks)==4
-    for path in decks:
-        text=path.read_text()
-        assert 'placeholder' in text.lower()
-        assert '![' not in text
-        assert len(text.split()) < 65
+def test_lessons_carry_no_unfinished_placeholders():
+    for name in LESSONS:
+        assert 'placeholder' not in (ROOT/'docs/tasks'/name).read_text().lower(), name

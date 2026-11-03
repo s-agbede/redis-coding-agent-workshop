@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 from contextlib import ExitStack
-from hashlib import sha256
 import importlib.util
 import json
 import os
@@ -23,6 +22,14 @@ from redis_agent_playbook import Playbook
 
 from playbook import PlaybookStore
 from runtime import Workshop
+
+
+def memory_store_id() -> str:
+    """The store ID from AGENT_MEMORY_STORE_ID, or from the file a self-hosted setup writes."""
+    path = os.environ.get('AGENT_MEMORY_STORE_ID_FILE', '')
+    if not os.environ.get('AGENT_MEMORY_STORE_ID') and path and Path(path).is_file():
+        return Path(path).read_text().strip()
+    return os.environ.get('AGENT_MEMORY_STORE_ID', '')
 
 
 def main() -> int:
@@ -53,18 +60,19 @@ def main() -> int:
     spec.loader.exec_module(learner)
     required = ('CAPTURE_ENABLED', 'RECALL_ENABLED', 'PLAYBOOK_ENABLED')
     if not all(hasattr(learner, name) for name in required):
-        parser.error('The selected agent belongs to an older workshop. Back it up and use the memory workshop starter agent.py from this branch.')
+        parser.error('This agent.py is from an older workshop. Back it up and copy the starter agent.py.')
     with ExitStack() as stack:
         client = stack.enter_context(OpenAI(
             api_key=os.environ['AGENT_API_KEY'], base_url=os.environ.get('AGENT_BASE_URL') or None,
             timeout=float(os.environ.get('AGENT_REQUEST_TIMEOUT','90')), max_retries=0,
         ))
         memory = None
-        memory_keys = ('AGENT_MEMORY_URL','AGENT_MEMORY_STORE_ID','AGENT_MEMORY_API_KEY')
-        if all(os.environ.get(key) for key in memory_keys):
+        store_id = memory_store_id()
+        if os.environ.get('AGENT_MEMORY_URL') and store_id:
+            # A self-hosted store has no API key; the hosted service requires one.
             memory = stack.enter_context(AgentMemory(
-                os.environ['AGENT_MEMORY_URL'], store_id=os.environ['AGENT_MEMORY_STORE_ID'],
-                api_key=os.environ['AGENT_MEMORY_API_KEY'], timeout_ms=30000,
+                os.environ['AGENT_MEMORY_URL'], store_id=store_id,
+                api_key=os.environ.get('AGENT_MEMORY_API_KEY') or 'none', timeout_ms=30000,
             ))
         playbook = None
         playbook_keys = ('PLAYBOOK_DATA_PLANE_URL','PLAYBOOK_PLAYBOOK_ID','PLAYBOOK_API_KEY')
@@ -73,12 +81,10 @@ def main() -> int:
                 os.environ['PLAYBOOK_DATA_PLANE_URL'], playbook_id=os.environ['PLAYBOOK_PLAYBOOK_ID'],
                 api_key=os.environ['PLAYBOOK_API_KEY'], timeout_ms=30000,
             ))
-            receipt_file = args.output / ('publication-' + sha256(owner.encode()).hexdigest()[:16] + '.json')
-            playbook = PlaybookStore(sdk, os.environ['PLAYBOOK_PLAYBOOK_ID'], receipt_file, owner,
+            playbook = PlaybookStore(sdk, args.output / 'publication.json',
                                      skill_id=os.environ.get('PLAYBOOK_SKILL_ID') or None)
         app = Workshop(learner, client, memory, playbook, owner, args.project, args.output)
-        print('Memory workshop: one coding agent, persistent preferences and published skills. /help for commands.')
-        print(f'Owner: {owner}\nSession: {app.state.session_id}\nProject: {args.project.resolve()}')
+        print('Coding agent with memory. /help lists commands.')
         app.command('/status')
         while True:
             try:
@@ -95,10 +101,11 @@ def main() -> int:
                 else:
                     app.turn(prompt)
             except (ValueError, NotImplementedError, FileNotFoundError) as error:
-                print(f'Action incomplete: {error}')
+                print(f'Error: {error or type(error).__name__}')
             except Exception as error:
-                # Service exceptions can include request details; keep credentials out of terminal logs.
-                print(f'Action incomplete: {type(error).__name__}; status={getattr(error,"status_code","unavailable")}. Check service connectivity/configuration. No successful result is implied.')
+                # Service exceptions can include request details; keep credentials out of the terminal.
+                status = getattr(error, 'status_code', None)
+                print(f'Error: {type(error).__name__}' + (f' (HTTP {status})' if status else '') + '. Check the settings in .env.')
     return 0
 
 

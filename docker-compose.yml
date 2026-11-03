@@ -37,6 +37,7 @@ services:
       PLAYBOOK_PLAYBOOK_ID: ${PLAYBOOK_PLAYBOOK_ID:-}
       PLAYBOOK_API_KEY: ${PLAYBOOK_API_KEY:-}
       IRIS_OWNER_ID: ${IRIS_OWNER_ID:-}
+      PLAYBOOK_SKILL_ID: ${PLAYBOOK_SKILL_ID:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
@@ -47,6 +48,28 @@ services:
       start_period: 20s
     restart: unless-stopped
 
+  # Browse the Redis databases behind the workshop. The Playbook's two databases are
+  # pre-connected; the self-hosted Agent Memory database is added by docker-compose.selfhost.yml.
+  redisinsight:
+    image: redis/redisinsight:3.2.0
+    environment:
+      RI_PROXY_PATH: /redisinsight
+      RI_ACCEPT_TERMS_AND_CONDITIONS: "true"
+      RI_REDIS_HOST1: ${PLAYBOOK_REDIS_HOST:-host.docker.internal}
+      RI_REDIS_PORT1: ${PLAYBOOK_REDIS_METADATA_PORT:-6480}
+      RI_REDIS_ALIAS1: Playbook metadata
+      RI_REDIS_PASSWORD1: ${PLAYBOOK_REDIS_PASSWORD:-}
+      RI_REDIS_HOST2: ${PLAYBOOK_REDIS_HOST:-host.docker.internal}
+      RI_REDIS_PORT2: ${PLAYBOOK_REDIS_CONTENT_PORT:-6481}
+      RI_REDIS_ALIAS2: Playbook skills
+      RI_REDIS_PASSWORD2: ${PLAYBOOK_REDIS_PASSWORD:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - redisinsight-data:/data
+    restart: unless-stopped
+
 volumes:
   workbench-venv:
   code-server-data:
+  redisinsight-data:

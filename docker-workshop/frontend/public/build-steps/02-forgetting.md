@@ -1,51 +1,58 @@
 ---
 title: The amnesiac and notes on the desk
 editorFile: project/AGENTS.md
-slides: /slides/02-markdown.md
 ---
 **8-minute demo, 5 minutes for you.** A preference works within a session and is gone in the next. A file survives, but only holds what someone chose to write down.
 
 ## Demo: the amnesiac
 
-The instructor states a preference in conversation:
+Mention a preference the way you would to a colleague:
 
 ```text
-Always add a short comment explaining why each validation check exists. Keep this preference in our conversation only; do not write it to AGENTS.md or another file.
+By the way, I like Google-style docstrings on my functions.
 ```
 
-Then asks for a small piece of code:
+Then ask for something small:
 
 ```text
-Write a Python function valid_report_filename(name: str) -> bool. Accept only names beginning report_ and ending .csv, with at least one character between them. Return code in your answer; do not create a file.
+Show me a quick function that turns a title into a URL slug.
 ```
 
-The answer follows the preference because the preference is in the conversation history, which is part of the request.
+The function gets a Google-style docstring, because your preference is in the conversation, and the conversation is part of the request.
 
-**Predict:** after `/new-session`, is the preference still in the request?
+Now run `/new-session` and ask for another function:
 
-`/new-session` then `/view-context`: `conversation` is empty and the preference appears nowhere. The model did not "forget"; the application simply stopped sending it.
+```text
+Show me a function that counts the words in a sentence.
+```
+
+**Predict:** will this one get a Google-style docstring?
+
+Run `/view-context`. The request holds the system prompt, `AGENTS.md` and your new message. The preference isn't there. The model didn't forget; the application simply stopped sending it.
 
 ## Demo: notes on the desk
 
-The instructor asks the agent to write a project convention to a file:
+Some things you'd rather write down:
 
 ```text
-Use your file tools to read AGENTS.md and add this project instruction: Use uv for Python projects. Preserve all existing text. Do not add the commenting preference or any other instruction. Show what you changed.
+Add a note to AGENTS.md that we target Python 3.12.
 ```
 
-After `/new-session` and `/view-context`, `project_instructions` contains "Use uv for Python projects." The file survives because the application reloads it into every new session.
+Run `/new-session` and ask:
 
-Files are a good home for conventions someone *decides* to write down. Most preferences come up in passing, while working, and never make it into a file. That is the gap the next section fills.
+```text
+Which Python version do we target?
+```
 
-Keep the commenting preference out of `AGENTS.md` all workshop: later we need to show that Redis Agent Memory supplies it, not the file.
+The agent knows, and `/view-context` shows why: the Python 3.12 note is in the first message. `AGENTS.md` is reloaded into every session.
 
-[Diagram placeholder: a new session clears conversation history while reloading the same AGENTS.md into fresh context.]
+That works for conventions someone *decides* to write down. Most preferences come up in passing and never make it into a file. The next section deals with those.
 
 ## Your turn (5 minutes)
 
-1. Paste the commenting preference, then the `valid_report_filename` task, at `You >`.
-2. Run `/new-session`, then `/view-context`. **Look for:** `conversation: []` and no commenting preference anywhere.
-3. Paste the `AGENTS.md` request above. Check the agent's diff.
-4. Run `/new-session`, then `/view-context`. **Look for:** "Use uv for Python projects." in `project_instructions`.
+1. Tell the agent your docstring preference, then ask for the slug function.
+2. `/new-session`, ask for the word-count function, then `/view-context`. **Look for:** no docstring preference in the request.
+3. Ask the agent to add the Python 3.12 note to `AGENTS.md`.
+4. `/new-session`, ask which Python version you target, then `/view-context`. **Look for:** the Python 3.12 note in the first message.
 
 Next: [capture with Redis Agent Memory](/build?lesson=03-capture.md).

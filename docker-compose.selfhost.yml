@@ -1,0 +1,112 @@
+# Self-hosted Redis Agent Memory 0.7: a local Redis 8, the data plane server and worker,
+# and the Control Plane. Switch it on by adding to .env:
+#
+#   AGENT_MEMORY_LICENSE_FILE=/absolute/path/to/agent-memory.license
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.selfhost.yml
+#
+# The runtime then uses this store instead of the hosted service, Redis Insight shows its
+# database, and the Agent Memory panel shows the store settings.
+x-license: &license
+  type: bind
+  source: ${AGENT_MEMORY_LICENSE_FILE:?Set AGENT_MEMORY_LICENSE_FILE in .env}
+  target: /run/license
+  read_only: true
+  bind:
+    create_host_path: false
+
+x-memory-service: &memory-service
+  image: redislabs/agent-memory:0.7.0@sha256:3ed2907461cfa796e3f9faf3b5d36c9297fb119159b936c0b3168e2488e18590
+  platform: linux/amd64
+  environment:
+    GODEBUG: fips140=off
+  volumes:
+    - memory-config:/run/ram:ro
+    - *license
+  depends_on:
+    memory-config:
+      condition: service_completed_successfully
+    memory-redis:
+      condition: service_healthy
+  restart: unless-stopped
+
+services:
+  memory-redis:
+    image: redis:8.2.1
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - memory-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    restart: unless-stopped
+
+  memory-config:
+    image: python:3.12-alpine
+    command: ["python", "/agent-memory/setup.py", "config"]
+    environment:
+      OPENAI_API_KEY: ${AGENT_API_KEY:-}
+      MEMORY_MODEL: ${AGENT_MEMORY_MODEL:-gpt-4o-mini}
+    volumes:
+      - ./agent-memory:/agent-memory:ro
+      - memory-config:/run/ram
+      - memory-token:/run/ram-token
+      - *license
+
+  memory-server:
+    <<: *memory-service
+    command: ["--config", "/run/ram/data-plane.yaml", "--mode=server"]
+
+  memory-worker:
+    <<: *memory-service
+    command: ["--config", "/run/ram/data-plane.yaml", "--mode=worker"]
+
+  memory-control-plane:
+    <<: *memory-service
+    image: redislabs/agent-memory-control-plane:0.7.0@sha256:1c32fc150c2a1ed08bd8078df59980e9e352c9c92a0e2caeb7e72841543705b0
+    command: ["--config", "/run/ram/control-plane.yaml"]
+    volumes:
+      - memory-config:/run/ram:ro
+      - memory-token:/run/ram-token:ro
+      - *license
+
+  memory-provision:
+    image: python:3.12-alpine
+    command: ["python", "/agent-memory/setup.py", "provision"]
+    volumes:
+      - ./agent-memory:/agent-memory:ro
+      - memory-token:/run/ram-token:ro
+      - memory-state:/run/agent-memory
+    depends_on:
+      memory-control-plane:
+        condition: service_started
+
+  runtime:
+    environment:
+      AGENT_MEMORY_URL: http://memory-server:9000
+      AGENT_MEMORY_STORE_ID: ""
+      AGENT_MEMORY_STORE_ID_FILE: /run/agent-memory/store-id
+      AGENT_MEMORY_API_KEY: ""
+      AGENT_MEMORY_CONTROL_PLANE_URL: http://memory-control-plane:9100
+      AGENT_MEMORY_ADMIN_TOKEN_FILE: /run/ram-token/admin-token
+    volumes:
+      - memory-state:/run/agent-memory:ro
+      - memory-token:/run/ram-token:ro
+    depends_on:
+      memory-provision:
+        condition: service_completed_successfully
+      memory-server:
+        condition: service_started
+
+  redisinsight:
+    environment:
+      RI_REDIS_HOST3: memory-redis
+      RI_REDIS_PORT3: "6379"
+      RI_REDIS_ALIAS3: Agent Memory
+
+volumes:
+  memory-redis-data:
+  memory-config:
+  memory-token:
+  memory-state:

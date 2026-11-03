@@ -1,70 +1,79 @@
 # Facilitate the memory workshop
 
-Use the [90-minute schedule](/WORKSHOP.md). Each section is your demo followed by five minutes of attendee hands-on. Complete the setup and rehearsal below before delivery.
+Use the [schedule](/WORKSHOP.md) and the [presenter deck](https://claude.ai/artifact/P3PvggzgEereLL3s1BcAEa). Each section is your demo, then five minutes for the room.
 
 ## Before the session
 
-**Services.** Provision Redis Agent Memory and Redis Agent Playbook. Confirm the existing `user_preference` extraction works with the commenting preference; do not plan to change extraction configuration during class.
+1. **Services.** Redis Agent Memory and Redis Agent Playbook, reachable from the attendee workspaces.
+2. **Publish the team skill.** On your machine, with a Playbook key that can publish and no `PLAYBOOK_SKILL_ID` set:
 
-**Publish the team skill once, in advance.** On your instructor machine, with a Playbook key that can create, publish and read, and **without** `PLAYBOOK_SKILL_ID` set:
+   ```bash
+   uv run --group iris python main.py --agent solutions/steps/03-playbook.py
+   ```
+
+   Run `/publish-skill` and note the entry ID. Publishing again keeps the same ID.
+3. **Attendee workspaces.** Each gets the model settings (`AGENT_API_KEY`, `AGENT_MODEL`, optional `AGENT_BASE_URL`), the three `AGENT_MEMORY_*` settings, and the Playbook settings with a read-only key plus `PLAYBOOK_SKILL_ID` set to your entry ID.
+4. **Redis Insight** (panel menu → Redis Insight) is pre-connected to the Playbook's Redis. Set `PLAYBOOK_REDIS_PASSWORD` (and the host and ports, if not local) in `.env`.
+5. **Optional: self-host Agent Memory.** With a license, add `AGENT_MEMORY_LICENSE_FILE` and `COMPOSE_FILE=docker-compose.yml:docker-compose.selfhost.yml` to `.env` and run `bash start.sh`. The workshop then uses a local Agent Memory 0.7 (server, worker, Control Plane, Redis 8). Redis Insight shows its database, and the Agent Memory panel's **Store settings** tab shows retention, extraction cadence, summarization and exclusions, which helps the governance discussion. The images are linux/amd64, so Apple Silicon runs them under emulation; rehearse the timing.
+6. **Rehearse** with real services, ideally with a few people on the same memory store.
+
+## Running Memory and Playbook yourself (Iris on-prem preview)
+
+Instead of the hosted services, the [Iris on-prem preview](https://github.com/redis-applied-ai/iris-onprem-preview) runs Agent Memory, Playbook, Lens and Context Gateway in a local Kubernetes cluster. It needs an Iris suite license (request it through the Iris license workflow) and suits rehearsal or a presenter demo; it listens on `127.0.0.1` only.
 
 ```bash
-uv run --group iris python main.py --agent solutions/steps/03-playbook.py
+cd ~/Documents/Projects/iris-onprem-preview
+install -m 600 /path/to/license.key .demo/licenses/iris.license
+OPENAI_API_KEY=sk-... task up    # the key enables real extraction; omit it for a model-free start
+task open                        # the Iris UI at http://127.0.0.1:18080
 ```
 
-Run `/publish-skill` and note the `entry_id`. That ID stays the same for every later publication of the skill, including the live one and any version 2.
+Then, in the workshop folder:
 
-**Attendee workspaces.** Each attendee gets an isolated workspace with:
+```bash
+source scripts/use_iris_preview.sh publish    # your terminal: operator token, so /publish-skill works
+uv run --group iris python main.py --agent solutions/steps/03-playbook.py   # run /publish-skill, note the entry ID
+source scripts/use_iris_preview.sh            # attendee view: read-only app keys
+export PLAYBOOK_SKILL_ID=ent_...              # the entry ID you just published
+```
 
-- model settings (`AGENT_API_KEY`, `AGENT_MODEL`, optional `AGENT_BASE_URL` for an approved gateway);
-- `AGENT_MEMORY_URL`, `AGENT_MEMORY_STORE_ID`, `AGENT_MEMORY_API_KEY`;
-- `PLAYBOOK_DATA_PLANE_URL`, `PLAYBOOK_PLAYBOOK_ID`, a **read-only** `PLAYBOOK_API_KEY`, and `PLAYBOOK_SKILL_ID` set to your entry ID.
+The workshop's current SDK versions work with the preview. Recall filters on the custom `coding_preference` memory type, so the workshop needs its own store:
 
-Each workspace persists its own synthetic owner identity, so new sessions keep the owner. Do not show keys on screen.
+- `python3 scripts/iris_preview_store.py` creates the `coding-agent-workshop` store from `agent-memory/store.json` (with that type) and a key for it; `use_iris_preview.sh` then uses it.
+- The preview ships with custom extraction switched off. Set `"custom_extraction": {"enabled": True}` and add a `custom_extraction` strategy next to `instruct` under `promote_session_memory` in the preview's `scripts/local/config.py`, then `task up` again.
+- On a store without the type (for example the hosted one), remove the `memory_type` filter from `recall_preferences`, or recall finds nothing.
 
-For the supplied Docker setup, a Playbook at `127.0.0.1:9301` on the host is reached as `WORKSHOP_PLAYBOOK_DATA_PLANE_URL=http://host.docker.internal:9301`.
+`task down` deletes the cluster and its data.
 
-**Rehearse** the full path in the browser workbench with real services, ideally with several attendees on one memory store at once. Measure extraction latency: the recall demo (about 10 minutes) must cover it.
+## Running it
 
-## Running each section
+Your `agent.py` follows the same snapshots as the room. After each change: save, `exit`, relaunch.
 
-Your own `agent.py` follows the same snapshots as the attendees. After each code change: save, `exit`, relaunch, `/status`.
+- **Recap.** Model asks, Python runs the tool, the result goes back. Ask today's question.
+- **The amnesiac.** "By the way, I like Google-style docstrings on my functions." Ask for the slug function; it gets the docstring. `/new-session`, ask for the word-count function, `/view-context`: the preference is gone. Then have the agent add "we target Python 3.12" to `AGENTS.md`, start a new session and ask which Python version you target.
+- **Capture.** Name Redis Agent Memory. Walk through `record_event`. Switch capture on, restate the preference, `/events`. Then `/new-session`, `/sessions`, `/resume`: the whole conversation is back. Open the Agent Memory panel to show the same session in the service. Ask: do we want every old conversation in every request?
+- **Recall.** Open with `/memories`; the preference has been extracted. Walk through `recall_preferences` (owner, not session) and `preference_context`. Fresh session, the de-duplication function, `/view-context`.
+- **Playbook.** Personal to organisational. Show `SKILL.md`, run `/publish-skill`, walk through `skill_context`, then `/skills`. Optional: add a rule to `SKILL.md` and publish again for version 2, then `git checkout skills/` afterwards.
+- **Verify.** Fresh session: "Implement validate_report in validator.py and make the tests pass." Approve the test run. `/view-context` for the three sources, then `/verify`.
+- **Discussion.** Below.
 
-- **Recap (0–4).** One picture: model asks, Python runs the tool, result returns. Ask today's question and show the four-source table. Attendees launch and run `/status`.
-- **The amnesiac and notes on the desk (4–17).** State the preference, run the filename task, `/new-session`, `/view-context`: it is gone. Then the `AGENTS.md` edit, `/new-session`, `/view-context`: it survives. Land the point: files hold what someone *decides* to write down.
-- **Capture (17–32).** Introduce Redis Agent Memory by name: session events, background extraction, typed long-term memories. Walk through `record_event` and the roles. Enable capture, restart, restate the preference and task, show `/events`. `/memories` may still be empty; say you will return to it. Attendees copy `01-capture.py`.
-- **Recall (32–47).** Open with `/memories`, now populated, from your capture. Walk through `recall_preferences` (owner, not session) and `preference_context`. Enable recall, restart, run `missing_columns`, show the retrieved block in `/view-context`. Land the point: memory is context your application chooses to add. Attendees copy `02-recall.py`; their extraction ran during your demo.
-- **Playbook (47–64).** Make the personal → organisational turn explicit. Introduce Redis Agent Playbook: publish, version, retrieve, share. Run `/publish-skill` live; it reconfirms the same entry. Walk through `skill_context`, enable Playbook, restart, `/skills`. Then `uv run --group iris python main.py --project project-review` and `/skills`: same source and version. Attendees copy `03-playbook.py` and run `/skills`.
-- **Optional version 2.** Add a non-functional line to `skills/report-validation/SKILL.md`, for example "Name the contract rule each check implements in its comment." Run `/publish-skill`: Playbook records version 2 of the same entry. Ask the room to run `/skills` and see the new version. Do not change the functional rules: the checker and contract are fixed. Restore `SKILL.md` from git afterwards.
-- **Verify (64–75).** `/new-session`, the validator task, `/view-context`: point to all three sources and their owners. `/verify` for the real exit status. Ask for one rule attributed to the procedure.
-- **Discussion (75–85).** See below.
-
-## Governance discussion
-
-This audience will ask about controls. Prepare answers for your deployment; the SDKs expose operations you can point to, but confirm their behaviour before claiming it.
+## Discussion prompts
 
 | Question | Point to |
 | --- | --- |
-| Who can read a memory? | The owner filter in recall selects records; it is not access control. Isolation comes from store and credential provisioning, and Redis Agent Memory namespaces. |
-| Can we correct or delete what it learned? | Agent Memory `update_long_term_memory`, `bulk_delete_long_term_memories`, `delete_session_memory`. |
-| Personal or sensitive data in memories? | Extraction works on what is captured. Decide what to capture; prompts asking the model to exclude content are not redaction. Use synthetic data today. |
-| Who approves a procedure? | Playbook separates creating a version from publishing it; it also has proposal and withdrawal operations. Only the publisher's key needs write access. |
-| How do changes roll out? | Consumers retrieve the current published version; source and version appear in every request for audit. |
+| Who can read a memory? | Recall filters by owner, but isolation comes from how stores, keys and namespaces are provisioned. |
+| Can we correct or delete what it learned? | Redis Agent Memory has update and delete operations for long-term memories and sessions. |
+| What about sensitive data? | Extraction learns from what you capture, so decide what to capture. |
+| Who approves a procedure? | Playbook separates creating a version from publishing it; only the publisher needs write access. |
+| How do changes roll out? | Agents retrieve the current published version, and its name and version appear in the request. |
+| What can we configure? | With self-hosting, the Agent Memory panel's Store settings tab shows retention, extraction cadence, summarization and sensitive-data exclusions. |
 
-## Troubleshooting
+## If something goes wrong
 
-| Observation | Response |
+| You see | Try |
 | --- | --- |
-| Preference absent from `/events` | It must be restated after capture is enabled, in the current session |
-| Events present, `/memories` empty | Extraction is asynchronous; wait through the recall demo, then check configuration. Never insert a memory by hand and call it extraction |
-| `/memories` populated, recall empty | Compare owner and memory type; do not broaden the filter to other attendees |
-| `/skills` says no team skill selected | `PLAYBOOK_SKILL_ID` is missing from that workspace |
-| `/skills` returns `null` | The entry is not published, or the ID belongs to another Playbook |
-| Attendee runs `/publish-skill` | Refused as an instructor step; this is expected |
-| Agent claims success but `/verify` fails | Paste the actual failure back; keep the checker unchanged |
-
-Owner filters demonstrate selection, not authorisation. Use synthetic workshop content only.
-
-## Pilot acceptance
-
-A pilot attendee finishes `/verify` before minute 75, explains why history and file persistence differ, locates the recalled preference and the published procedure in an actual request, and names a skill-derived rule. Record where they needed help and whether the extraction wait was hidden by the recall demo.
+| `/memories` is empty | Extraction takes up to a minute or two. Check the preference was said after capture was switched on. |
+| `/sessions` is empty | Sessions are only stored once capture is on. |
+| `/skills` says there's no team skill | That workspace is missing `PLAYBOOK_SKILL_ID`. |
+| `/skills` shows nothing for the task | The entry isn't published, or the ID is from another Playbook. |
+| The agent edits `validator.py` early | It was given a report-related task. Keep the early tasks unrelated to the project ("Show me a function that…"). |

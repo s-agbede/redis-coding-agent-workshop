@@ -1,4 +1,5 @@
-"""Observable session and context behavior through the Part 2 runtime."""
+"""Session commands and request assembly, observed through the runtime."""
+import shutil
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -7,60 +8,104 @@ import pytest
 
 pytest.importorskip('redis_agent_memory')
 pytest.importorskip('redis_agent_playbook')
+import runtime
+
+ROOT = Path(__file__).resolve().parents[1]
+LEARNER = SimpleNamespace(CAPTURE_ENABLED=False, RECALL_ENABLED=False, PLAYBOOK_ENABLED=False)
 
 
-def runtime_module():
-    import runtime
-    return runtime
+def test_new_session_reloads_agents_md_and_clears_the_conversation(tmp_path):
+    (tmp_path / 'AGENTS.md').write_text('Use type hints.')
+    app = runtime.Workshop(LEARNER, Mock(), None, None, 'owner', tmp_path, tmp_path / 'out')
+    previous = app.state.session_id
+    app.state.history = [{'role': 'user', 'content': 'I like Google-style docstrings.'}]
+    app.state.last_request = [{'role': 'user', 'content': 'old request'}]
+    (tmp_path / 'AGENTS.md').write_text('Use type hints.\nUse uv.')
+    app.command('/new-session')
+    assert app.state.session_id != previous and app.state.owner == 'owner'
+    assert app.state.history == [] and app.state.last_request == []
+    assert 'Use uv.' in app.state.instructions
 
 
-def test_new_session_reloads_project_and_clears_request_and_history(tmp_path):
-    runtime = runtime_module()
-    instructions = tmp_path / 'AGENTS.md'
-    instructions.write_text('Use uv.')
-    session = runtime.Session.start('learner-a', tmp_path)
-    previous = session.session_id
-    session.history = [{'role': 'user', 'content': 'Remember my preference'}]
-    session.last_request = [{'role': 'user', 'content': 'old request'}]
-    session.preferences = [{'text': 'old memory'}]
-    instructions.write_text('Use uv. Preserve tests.')
-    fresh = session.reset()
-    assert fresh.owner == 'learner-a'
-    assert fresh.session_id != previous
-    assert fresh.history == [] and fresh.last_request == [] and fresh.preferences == []
-    assert 'Preserve tests.' in fresh.instructions
-
-
-def test_context_preserves_project_task_and_history_without_stale_memory(tmp_path):
-    runtime = runtime_module()
-    (tmp_path / 'AGENTS.md').write_text('Use uv.')
+def test_request_has_project_instructions_then_recalled_context_then_the_task(tmp_path):
+    (tmp_path / 'AGENTS.md').write_text('Use type hints.')
     state = runtime.Session.start('owner', tmp_path)
     state.history = [{'role': 'user', 'content': 'Earlier task'}, {'role': 'assistant', 'content': 'Earlier answer'}]
     learner = Mock()
-    learner.preference_context.side_effect = lambda items: str(items)
-    learner.skill_context.return_value = ''
-    state.preferences = [{'text': 'Explain checks in comments'}]
-    messages = runtime.compose(state, learner, 'Validate columns')
-    assert 'Use uv.' in messages[0]['content']
-    assert 'Explain checks in comments' in messages[1]['content']
-    assert messages[-1] == {'role': 'user', 'content': 'Validate columns'}
+    learner.preference_context.side_effect = lambda items: 'Prefs: ' + items[0]['text']
+    state.preferences = [{'text': 'Google-style docstrings'}]
+    messages = runtime.compose(state, learner, 'Write a function')
+    assert 'Use type hints.' in messages[0]['content']
+    assert messages[1] == {'role': 'system', 'content': 'Prefs: Google-style docstrings'}
     assert messages[-2]['content'] == 'Earlier answer'
-    assert len(state.history) == 2
+    assert messages[-1] == {'role': 'user', 'content': 'Write a function'}
     state.preferences = []
-    assert 'Explain checks' not in str(runtime.compose(state, learner, 'Another task'))
+    assert 'Google-style' not in str(runtime.compose(state, learner, 'Another task'))
 
 
-def test_commands_never_call_model_or_record_events(tmp_path):
-    runtime = runtime_module()
-    learner, model, memory = Mock(), Mock(), Mock()
-    app = runtime.Workshop(learner, model, memory, None, 'owner', tmp_path, tmp_path / 'output')
+def test_sessions_lists_stored_sessions_and_resume_restores_the_conversation(tmp_path, capsys):
+    memory = Mock()
+    app = runtime.Workshop(LEARNER, Mock(), memory, None, 'owner', tmp_path, tmp_path / 'out')
+    memory.list_sessions.return_value.items = ['old-session', app.state.session_id]
+    app.command('/sessions')
+    shown = capsys.readouterr().out
+    assert 'old-session' in shown and '(current)' in shown
+    memory.list_sessions.assert_called_once_with(filter_owner_id='owner')
+    memory.get_session_memory.return_value.model_dump.return_value = {'events': [
+        {'role': 'USER', 'actorId': 'owner', 'content': [{'text': 'I like Google-style docstrings.'}]},
+        {'role': 'ASSISTANT', 'actorId': 'coding-assistant', 'content': [{'text': 'Noted.'}]},
+    ]}
+    app.command('/resume old-session')
+    assert app.state.session_id == 'old-session'
+    assert app.state.history == [
+        {'role': 'user', 'content': 'I like Google-style docstrings.'},
+        {'role': 'assistant', 'content': 'Noted.'},
+    ]
+
+
+def test_view_context_shows_each_message_of_the_latest_request(tmp_path, capsys):
+    app = runtime.Workshop(LEARNER, Mock(), None, None, 'owner', tmp_path, tmp_path / 'out')
     app.command('/view-context')
-    app.command('/new-session')
-    assert not model.mock_calls and not memory.mock_calls and not learner.mock_calls
+    assert 'Nothing sent' in capsys.readouterr().out
+    app.state.last_request = [
+        {'role': 'system', 'content': 'You are a coding assistant.'},
+        {'role': 'assistant', 'content': None, 'tool_calls': [{'function': {'name': 'read_file'}}]},
+        {'role': 'user', 'content': 'Write a function'},
+    ]
+    app.command('/view-context')
+    shown = capsys.readouterr().out
+    assert '[1] system: You are a coding assistant.' in shown
+    assert '(asks to run read_file)' in shown and '[3] user: Write a function' in shown
+
+
+def test_verify_runs_the_project_tests(tmp_path, capsys):
+    project = tmp_path / 'project'
+    shutil.copytree(ROOT / 'project', project)
+    app = runtime.Workshop(LEARNER, Mock(), None, None, 'owner', project, tmp_path / 'out')
+    app.command('/verify')
+    assert 'Tests failed.' in capsys.readouterr().out
+    shutil.copy(ROOT / 'solutions/validator.py', project / 'validator.py')
+    app.command('/verify')
+    assert 'Tests passed.' in capsys.readouterr().out
+
+
+def test_status_and_inspection_never_call_the_model(tmp_path, capsys):
+    model, memory = Mock(), Mock()
+    app = runtime.Workshop(LEARNER, model, memory, Mock(skill_id='ent_team'), 'owner', tmp_path, tmp_path / 'out')
+    app.command('/status')
+    app.command('/view-context')
+    shown = capsys.readouterr().out
+    assert 'owner' in shown and 'ent_team' in shown and 'Capture:  off' in shown
+    assert not model.mock_calls and not memory.mock_calls
+
+
+def test_missing_service_configuration_is_named(tmp_path):
+    app = runtime.Workshop(LEARNER, Mock(), None, None, 'owner', tmp_path, tmp_path / 'out')
+    with pytest.raises(ValueError, match='AGENT_MEMORY'):
+        app.command('/memories')
 
 
 def test_tools_cannot_edit_or_read_outside_project(tmp_path):
-    runtime = runtime_module()
     project = tmp_path / 'project'; project.mkdir()
     secret = tmp_path / 'outside.txt'; secret.write_text('do not read')
     registry = runtime.project_tools(project)
@@ -69,28 +114,3 @@ def test_tools_cannot_edit_or_read_outside_project(tmp_path):
     with pytest.raises(ValueError, match='outside'):
         registry['write_file']('../outside.txt', 'overwrite')
     assert secret.read_text() == 'do not read'
-
-
-def test_status_explains_stage_and_configuration_without_service_calls(tmp_path, capsys):
-    runtime = runtime_module()
-    learner = SimpleNamespace(CAPTURE_ENABLED=False, RECALL_ENABLED=False, PLAYBOOK_ENABLED=False)
-    model, memory, playbook = Mock(), Mock(), Mock(skill_id='ent_team')
-    app = runtime.Workshop(learner, model, memory, playbook, 'learner-a', tmp_path, tmp_path/'output')
-    app.command('/status')
-    shown = capsys.readouterr().out
-    assert 'learner-a' in shown and app.state.session_id in shown
-    assert 'commenting preference' in shown
-    assert 'not live-checked' in shown and 'ent_team' in shown
-    assert not model.mock_calls and not memory.mock_calls and not playbook.mock_calls
-    learner.CAPTURE_ENABLED=True
-    learner.RECALL_ENABLED=True
-    app.command('/status')
-    assert '/skills' in capsys.readouterr().out
-
-
-def test_status_names_missing_configuration_before_memory_exercise(tmp_path, capsys):
-    runtime = runtime_module()
-    learner=SimpleNamespace(CAPTURE_ENABLED=True,RECALL_ENABLED=False,PLAYBOOK_ENABLED=False)
-    app=runtime.Workshop(learner,Mock(),None,None,'owner',tmp_path,tmp_path/'output')
-    app.command('/status')
-    assert 'instructor' in capsys.readouterr().out

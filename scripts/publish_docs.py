@@ -10,10 +10,9 @@ LESSONS = (
     '01-recap.md', '02-forgetting.md', '03-capture.md',
     '04-recall.md', '05-playbook.md', '06-verify.md',
 )
-SLIDES = {
-    '01-recap.md': '01-recap.md', '02-forgetting.md': '02-markdown.md',
-    '03-capture.md': '03-memory.md', '05-playbook.md': '04-playbook.md',
-}
+# The presenter deck is a separate Slides artifact (see WORKSHOP.md); lessons carry no
+# in-guide decks. Map a lesson to a docs/slides/ file here to show one beside it again.
+SLIDES: dict[str, str] = {}
 
 
 def lesson_links(text: str, source: str) -> str:
@@ -27,7 +26,7 @@ def lesson_links(text: str, source: str) -> str:
             target = '/build?lesson=' + posixpath.basename(resolved)
         elif resolved.startswith('docs/images/'):
             target = '/' + resolved.removeprefix('docs/')
-        elif resolved.startswith(('skills/', 'challenge/', 'solutions/', 'project/', 'docs/')) or resolved in ('WORKSHOP.md', 'FACILITATOR.md', 'IMPLEMENTATION.md'):
+        elif resolved.startswith(('skills/', 'solutions/', 'project/', 'docs/')) or resolved in ('WORKSHOP.md', 'FACILITATOR.md'):
             target = '/' + resolved
         else:
             return match[0]
@@ -49,10 +48,10 @@ def published_files(root: Path) -> dict[Path, bytes]:
     for name in ('home.md', 'welcome.md'):
         if (docs / name).exists():
             outputs[root / 'docker-workshop/docs' / name] = (docs / name).read_bytes()
-    for name in ('WORKSHOP.md', 'FACILITATOR.md', 'IMPLEMENTATION.md'):
+    for name in ('WORKSHOP.md', 'FACILITATOR.md'):
         if (root / name).is_file():
             outputs[public / name] = lesson_links((root / name).read_text(), name).encode()
-    for folder in ('skills', 'challenge', 'solutions', 'project'):
+    for folder in ('skills', 'solutions', 'project'):
         for source in sorted((root / folder).rglob('*')):
             if source.is_file() and '__pycache__' not in source.parts and source.suffix in ('.md', '.py', '.json'):
                 outputs[public / source.relative_to(root)] = source.read_bytes()
@@ -69,7 +68,10 @@ def published_files(root: Path) -> dict[Path, bytes]:
         outputs[public / 'build-steps' / name] = (frontmatter + lesson_links(body.lstrip('\n'), f'docs/tasks/{name}')).encode()
         manifest.extend((f'  - file: {name}', f'    title: {title}'))
     outputs[public / 'build-steps/manifest.yaml'] = ('\n'.join(manifest) + '\n').encode()
-    outputs[public / 'welcome.md'] = lesson_links((docs / 'welcome.md').read_text(), 'docs/welcome.md').encode()
+    # The guide's welcome hero reads its title and subtitle from front matter.
+    hero = ('---\ntitle: Give a coding agent useful memory\n'
+            'subtitle: Part 2 · Redis Agent Memory and Redis Agent Playbook\n---\n')
+    outputs[public / 'welcome.md'] = (hero + lesson_links((docs / 'welcome.md').read_text(), 'docs/welcome.md')).encode()
     return outputs
 
 

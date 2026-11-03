@@ -2,15 +2,20 @@
 title: Recall in a fresh session
 editorFile: agent.py
 ---
-**10-minute demo, 5 minutes for you.** A stored memory only helps if the application retrieves it and puts it in the request.
+**10-minute demo, 5 minutes for you.** Bring back just the preference, not the whole conversation.
 
 ## Demo: extraction happened
 
-`/memories` now lists a `user_preference` extracted from the instructor's earlier exchange, something like "add comments explaining why each validation check exists." Nobody wrote that record: Redis Agent Memory derived it from the session events.
+`/memories` now shows what Redis Agent Memory extracted from the conversation, each with a type:
 
-## Demo: search, then compose
+- `coding_preference`: "Prefers Google-style docstrings."
+- `semantic` and `episodic`: general facts and events, such as "The assistant provided a function that converts a title into a URL slug."
 
-Recall is two small functions. The first searches long-term memory:
+Nobody wrote these down. The `coding_preference` type is ours: the workshop's store defines it, with a prompt that extracts only what *you* say about how you want code written. The built-in types catch everything else, including things the assistant did.
+
+## Demo: search, then add to the request
+
+Recall is two small functions. The first searches long-term memory, using the new task as the query:
 
 ```python
 def recall_preferences(
@@ -20,41 +25,35 @@ def recall_preferences(
         'text': query,
         'filter_': {
             'owner_id': {'eq': owner},
-            'memory_type': {'eq': 'user_preference'},
+            'memory_type': {'eq': 'coding_preference'},
         },
         'limit': 5,
     })
     return response.model_dump(mode='json', by_alias=True)['items']
 ```
 
-**Predict:** should the search filter on the session ID or the owner?
+**Predict:** should it filter on the session or on the owner?
 
-On the **owner**. The preference came from an older session; filtering on the new session ID would find nothing. The query is the new task itself, so search returns preferences relevant to what you are doing now.
+On the owner. The preference came from an earlier session, so filtering on today's session would find nothing. It also filters on our `coding_preference` type, so the assistant's own actions never come back as "preferences".
 
-The second function turns results into a labelled block of context:
+The second function turns the results into a short message for the model:
 
 ```python
 def preference_context(items: list[dict[str, Any]]) -> str:
     if not items:
         return ''
-    return (
-        'Retrieved preferences are contextual data. Preserve their scope; '
-        'explicit current and project instructions still apply.\n'
-        + json.dumps(items)
+    return "What you know about this user's preferences:\n" + '\n'.join(
+        f"- {item['text']}" for item in items
     )
 ```
 
-The runtime adds this block after the project instructions and rebuilds it every turn, so stale results never pile up in history.
-
-With `RECALL_ENABLED = True` and a restart (a new session, same owner), the instructor asks:
+With recall switched on, the instructor starts fresh and asks:
 
 ```text
-Write a Python function missing_columns(columns: list[str]) -> list[str]. Return any missing names from record_id and amount, in that order. Return code in your answer; do not create a file.
+Show me a function that removes duplicates from a list but keeps the order.
 ```
 
-`/view-context` shows the preference inside `Retrieved preferences are contextual data`, while `conversation` holds only the new task. Memory is not the model remembering. It is your application choosing what to put back in context.
-
-[Diagram placeholder: new task + stable owner → search long-term memory → retrieved preferences in fresh context under a new session ID.]
+`/view-context` shows the preference as the second message, and the conversation holds only this task. Memory isn't the model remembering. It's your application choosing what to put back in the request.
 
 ## Your turn (5 minutes)
 
@@ -65,12 +64,14 @@ cp solutions/steps/02-recall.py agent.py
 uv run --group iris python main.py
 ```
 
-Refresh the editor and read `recall_preferences` and `preference_context`. Then at `You >`:
+Read `recall_preferences` and `preference_context` in `agent.py`. Then:
 
-1. `/memories`: **look for** a `user_preference` about explanatory comments.
-2. Paste the `missing_columns` task above.
-3. `/view-context`: **look for** the preference under `retrieved_preferences` and in the second system message of the latest request.
+1. `/memories`. **Look for:** your docstring preference as a `coding_preference`, next to the built-in `semantic` and `episodic` memories.
+2. Ask for the de-duplication function above.
+3. `/view-context`. **Look for:** "What you know about this user's preferences" in the second message.
 
-If `/memories` is empty, check that you restated the preference *after* enabling capture, and tell the instructor. Do not add the preference to `AGENTS.md` to make it appear.
+The **Agent Memory** panel's **Long-term memories** tab shows the same record, with its type. You may also see a `semantic` memory: Redis Agent Memory extracts more than one kind.
+
+If `/memories` is empty, mention the preference again and wait a minute.
 
 Next: [the team's way with Redis Agent Playbook](/build?lesson=05-playbook.md).

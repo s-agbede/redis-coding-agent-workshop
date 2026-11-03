@@ -1,56 +1,51 @@
 # Trust, but verify
 
-**6-minute demo, 5 minutes for you.** All three sources guide one task. An independent checker decides whether the result is right.
+**6-minute demo, 5 minutes for you.** All three sources guide one real task. The tests decide whether it worked.
 
 ## Demo: one task, three sources
 
-The instructor starts a fresh session (`/new-session`) and asks:
+The project has an unfinished `validator.py` and a set of tests in `tests/`. The instructor starts a fresh session and asks:
 
 ```text
-Implement validate_report in validator.py using the published report-validation procedure. Keep its supplied interface. Inspect relevant context and make the smallest change. Do not edit the independent checker, contract or fixtures. Explain the checks you ran and any uncertainty.
+Implement validate_report in validator.py and make the tests pass.
 ```
+
+The agent reads the code and tests, writes the function, and asks to run the tests. Approve it.
 
 `/view-context` shows where each piece of knowledge came from:
 
 | In the request | Source | Owner |
 | --- | --- | --- |
-| "Use uv for Python projects." under `Project instructions:` | `AGENTS.md` | The project |
-| The commenting preference under `Retrieved preferences` | Redis Agent Memory | You |
-| `Published procedure:` and `Published version:` | Redis Agent Playbook | The organisation |
+| The Python 3.12 note | `AGENTS.md` | The project |
+| "What you know about this user's preferences" | Redis Agent Memory | You |
+| "Team procedure from Redis Agent Playbook" | Redis Agent Playbook | The organisation |
 
-The conversation contains only this task. Nothing from earlier sessions was replayed.
-
-Then `/verify` runs the unchanged [checker](../../challenge/check_contract.py) against the agent's `validator.py` and prints its real exit status. The agent saying "tests pass" is not evidence; the checker is.
-
-[Diagram placeholder: project instructions, recalled preference and published procedure guide the request; an independent checker evaluates the edited code.]
+Then `/verify` runs the tests yourself. The agent saying "tests pass" is a claim; the test run is the evidence.
 
 ## Your turn (5 minutes)
 
-At `You >`:
-
-1. `/new-session`, then paste the validator task above.
-2. `/view-context`: **look for** all three sources in the latest request.
-3. `/verify`: **look for** `Independent checker exit: 0`. If it fails, paste the actual failure back to the agent and check its repair.
-4. Name one rule in `project/validator.py` that came from the published procedure, and check whether its comment explains *why*. The checker tests behaviour; only you can judge whether the preference was followed.
+1. `/new-session`, then ask for the validator as above. Approve the test run when asked.
+2. `/view-context`. **Look for:** all three sources.
+3. `/verify`. **Look for:** "Tests passed."
+4. Open `project/validator.py`. Find one rule that came from the team procedure (`Decimal`? the error format?) and check for your Google-style docstring.
 
 <details>
 <summary>Out of time?</summary>
 
-A reference validator lets you explore the contract. Using it is not an agent-generated result.
-
 ```bash
 cp solutions/validator.py project/validator.py
-uv run --group iris python challenge/check_contract.py project/validator.py
 ```
+
+This is a reference answer, not the agent's.
 
 </details>
 
 ## Three sources, three owners
 
-| Knowledge | Example from today | Home |
+| Knowledge | Today's example | Home |
 | --- | --- | --- |
-| Project convention | Use uv | `AGENTS.md`, reviewed with the code |
-| Personal preference | Explain each check in a comment | Redis Agent Memory, learned from your work |
-| Organisational rule | How reports are validated | Redis Agent Playbook, published and versioned |
+| Project convention | We target Python 3.12 | `AGENTS.md`, reviewed with the code |
+| Personal preference | Google-style docstrings | Redis Agent Memory, learned from your conversations |
+| Team rule | How reports are validated | Redis Agent Playbook, published and versioned |
 
-**Discussion:** pick one of each from your own team. Then: who should be able to read a memory, how would you correct or delete one, and who approves publishing a procedure?
+**Discussion:** pick one of each from your own team. Who should be able to read a memory? How would you correct or delete one? Who approves publishing a procedure?

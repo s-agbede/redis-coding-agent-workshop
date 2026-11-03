@@ -1,0 +1,41 @@
+{
+  "name": "coding-agent-workshop",
+  "shortMemory": {
+    "ttlSeconds": 86400
+  },
+  "longTermMemory": {
+    "ttlSeconds": 604800
+  },
+  "extractionStrategy": "instruct",
+  "extractionCadence": {
+    "activeIntervalSeconds": 60
+  },
+  "summarization": {
+    "enabled": false,
+    "triggerStrategy": "event_count",
+    "eventCount": {
+      "threshold": 6,
+      "retainCount": 2
+    }
+  },
+  "customMemoryTypes": [
+    {
+      "name": "coding_preference",
+      "description": "A preference the user has stated about how they want code written: style, docstrings, naming, testing or tooling.",
+      "fields": [
+        {
+          "name": "topic",
+          "description": "What the preference is about, for example docstrings, naming, testing or tooling.",
+          "type": "str"
+        }
+      ],
+      "extractionStrategy": {
+        "enabled": true,
+        "prompt": "Extract a coding_preference only when the user says, in their own words, how they want code written or which conventions and tools they want used, for example \"I like Google-style docstrings\" or \"use pytest, not unittest\". Ignore the assistant's messages, code the assistant wrote, and tasks the user asked for. Write each preference as one short sentence, for example \"Prefers Google-style docstrings.\""
+      }
+    }
+  ],
+  "longTermMemoryExclusions": {
+    "enabled": false
+  }
+}

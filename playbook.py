@@ -1,122 +1,69 @@
-"""Publish a supplied skill ZIP and retrieve its exact published version via SDK.
+"""Publish the team skill to Redis Agent Playbook and retrieve it for a task.
 
-The instructor publishes once; attendees retrieve that entry by PLAYBOOK_SKILL_ID
-and only need read access.
+The instructor publishes once. Attendees set PLAYBOOK_SKILL_ID to that entry and only read.
 """
 from __future__ import annotations
 
 import base64
 from hashlib import sha256
 from io import BytesIO
+import json
 from pathlib import Path
-from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
+from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
-from pydantic import BaseModel
 from redis_agent_playbook import Playbook
 
 from context import PublishedSkill
 
 
-class Receipt(BaseModel):
-    playbook_id: str
-    owner: str
-    entry_id: str
-    version: int
-    package_digest: str
-
-
 def encode_package(folder: Path) -> str:
-    """Create a deterministic Agent Skills ZIP rooted at the supplied folder name."""
-    if not (folder / 'SKILL.md').is_file():
-        raise ValueError('Skill folder must contain SKILL.md')
+    """Zip a skill folder as an Agent Skills package, byte-identical for identical content."""
     buffer = BytesIO()
     with ZipFile(buffer, 'w', compression=ZIP_DEFLATED) as archive:
-        for path in sorted(folder.rglob('*')):
-            if path.is_symlink():
-                raise ValueError('Skill packages must not contain symlinks')
-            if path.is_file():
-                name = folder.name + '/' + path.relative_to(folder).as_posix()
-                archive.writestr(ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0)), path.read_bytes())
+        for path in sorted(p for p in folder.rglob('*') if p.is_file() and not p.is_symlink()):
+            name = folder.name + '/' + path.relative_to(folder).as_posix()
+            archive.writestr(ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0)), path.read_bytes())
     return base64.b64encode(buffer.getvalue()).decode('ascii')
 
 
 class PlaybookStore:
-    def __init__(self, client: Playbook, playbook_id: str, receipt_path: Path, owner: str,
-                 skill_id: str | None = None) -> None:
+    def __init__(self, client: Playbook, receipt_path: Path, skill_id: str | None = None) -> None:
         self.client = client
-        self.playbook_id = playbook_id
         self.receipt_path = receipt_path
-        self.owner = owner
-        # Set for attendees: the instructor's published entry, shared by the whole room.
         self.skill_id = skill_id
 
-    def save(self, receipt: Receipt) -> None:
-        self.receipt_path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = self.receipt_path.with_suffix('.tmp')
-        temporary.write_text(receipt.model_dump_json(indent=2), encoding='utf-8')
-        temporary.replace(self.receipt_path)
-
-    def receipt(self) -> Receipt:
-        if not self.receipt_path.exists():
-            raise ValueError('Publish the supplied skill first with /publish-skill.')
-        result = Receipt.model_validate_json(self.receipt_path.read_text())
-        if result.playbook_id != self.playbook_id or result.owner != self.owner:
-            raise ValueError('Publication receipt belongs to a different service or learner.')
-        return result
-
-    def publish(self, folder: Path) -> Receipt:
-        if self.skill_id and not self.receipt_path.exists():
-            raise ValueError('Publishing is an instructor step. This workspace retrieves the '
-                             f'instructor-published skill {self.skill_id}; run /skills to inspect it.')
+    def publish(self, folder: Path) -> tuple[str, int]:
+        """Publish the folder; changed content becomes the next version of the same entry."""
+        receipt = json.loads(self.receipt_path.read_text()) if self.receipt_path.exists() else None
+        if self.skill_id and receipt is None:
+            raise ValueError('Publishing is done by the instructor. Run /skills to see the team procedure.')
         package = encode_package(folder)
-        digest = sha256(base64.b64decode(package)).hexdigest()
-        if self.receipt_path.exists():
-            receipt = self.receipt()
-            if self.skill_id and receipt.entry_id != self.skill_id:
-                raise ValueError('PLAYBOOK_SKILL_ID does not match this publication receipt.')
-            if receipt.package_digest != digest:
-                # Changed content becomes the next version of the same entry, so consumers keep one ID.
-                appended = self.client.append_skill_version(skill_id=receipt.entry_id, package_base64=package)
-                receipt = receipt.model_copy(update={'version': appended.version.version, 'package_digest': digest})
-                self.save(receipt)
+        digest = sha256(package.encode()).hexdigest()
+        if receipt and receipt['digest'] == digest:
+            return receipt['entry_id'], receipt['version']
+        if receipt:
+            created = self.client.append_skill_version(skill_id=receipt['entry_id'], package_base64=package)
         else:
-            # A unique learner/content key prevents overwriting other users' publications.
-            key = 'workshop-report-' + sha256((self.owner + digest).encode()).hexdigest()[:24]
-            created = self.client.create_skill(package_base64=package, entry_key=key)
-            receipt = Receipt(
-                playbook_id=self.playbook_id, owner=self.owner,
-                entry_id=created.entry.entry_id, version=created.version.version,
-                package_digest=digest,
-            )
-            # Save the draft ID before publication so retry can recover without creating another entry.
-            self.save(receipt)
-        entry = self.client.get_skill(skill_id=receipt.entry_id)
-        if entry.publication is None or entry.publication.version != receipt.version:
-            entry = self.client.publish_skill(skill_id=receipt.entry_id, version=receipt.version)
-        if entry.publication is None or entry.publication.version != receipt.version:
-            raise ValueError('Service did not confirm the requested published version.')
-        return receipt
+            created = self.client.create_skill(package_base64=package, entry_key=f'report-validation-{digest[:12]}')
+        entry_id, version = created.entry.entry_id, created.version.version
+        self.client.publish_skill(skill_id=entry_id, version=version)
+        self.receipt_path.parent.mkdir(parents=True, exist_ok=True)
+        self.receipt_path.write_text(json.dumps({'entry_id': entry_id, 'version': version, 'digest': digest}))
+        return entry_id, version
 
     def entry_id(self) -> str:
         if self.skill_id:
             return self.skill_id
         if not self.receipt_path.exists():
-            raise ValueError('No team skill selected. Set PLAYBOOK_SKILL_ID to the instructor-published '
-                             'skill, or publish it first with /publish-skill.')
-        return self.receipt().entry_id
+            raise ValueError('No team skill yet. Set PLAYBOOK_SKILL_ID, or publish it with /publish-skill.')
+        return json.loads(self.receipt_path.read_text())['entry_id']
 
     def retrieve(self, query: str) -> PublishedSkill | None:
+        """Search the Playbook for this task; return the team skill only if it is relevant."""
         entry_id = self.entry_id()
-        results = self.client.search_skills(query=query, limit=20)
-        match = next((item for item in results.matches if item.entry_id == entry_id), None)
+        matches = self.client.search_skills(query=query, limit=20).matches
+        match = next((item for item in matches if item.entry_id == entry_id), None)
         if match is None:
             return None
-        entry = self.client.get_skill(skill_id=match.entry_id)
-        if entry.publication is None or entry.publication.version != match.version:
-            raise ValueError('Publication changed during retrieval; repeat the request.')
-        version = self.client.get_skill_version(skill_id=match.entry_id, version=match.version)
-        skill = version.content.payload.skill
-        return PublishedSkill(
-            source=f'playbook://{self.playbook_id}/skills/{version.entry_id}/versions/{version.version}',
-            version=version.version, instructions=skill.instructions, digest=version.content_digest,
-        )
+        content = self.client.get_skill_version(skill_id=entry_id, version=match.version).content.payload.skill
+        return PublishedSkill(name=content.manifest.name, version=match.version, instructions=content.instructions)

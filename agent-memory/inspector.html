@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Memory</title>
+<style>
+  :root { --bg:#0b1b24; --panel:#13293a; --line:#24404f; --text:#e6edf0; --muted:#9fb1ba; --accent:#ff6b5e; --blue:#7fa8ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 system-ui, -apple-system, Segoe UI, sans-serif; }
+  header { display:flex; align-items:center; gap:16px; padding:12px 16px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  h1 { font-size:15px; margin:0; }
+  .owner { color:var(--muted); font-size:12px; }
+  nav { display:flex; gap:4px; margin-left:auto; }
+  nav button, .refresh { background:none; border:1px solid var(--line); color:var(--muted); padding:5px 12px; border-radius:6px; cursor:pointer; font:inherit; }
+  nav button[aria-selected="true"] { color:var(--text); border-color:var(--accent); }
+  .refresh:hover, nav button:hover { color:var(--text); }
+  main { padding:16px; }
+  .note { color:var(--muted); }
+  .error { color:var(--accent); }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:10px; }
+  .meta { color:var(--muted); font-size:12px; margin-top:4px; }
+  .tag { display:inline-block; font-size:11px; padding:1px 8px; border-radius:10px; border:1px solid var(--blue); color:var(--blue); margin-right:6px; }
+  .session { cursor:pointer; font-family:ui-monospace, Menlo, monospace; font-size:12px; }
+  .session:hover { border-color:var(--accent); }
+  .role { font-weight:600; font-size:12px; color:var(--blue); }
+  .role.user { color:var(--accent); }
+  pre { margin:0; white-space:pre-wrap; word-break:break-word; font:12px/1.5 ui-monospace, Menlo, monospace; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Agent Memory</h1>
+  <span class="owner" id="owner"></span>
+  <nav role="tablist">
+    <button role="tab" data-view="memories" aria-selected="true">Long-term memories</button>
+    <button role="tab" data-view="sessions" aria-selected="false">Sessions</button>
+    <button role="tab" data-view="settings" aria-selected="false">Store settings</button>
+  </nav>
+  <button class="refresh" id="refresh">Refresh</button>
+</header>
+<main id="view"></main>
+<script>
+const view = document.getElementById('view');
+let current = 'memories';
+
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+async function get(path) {
+  const response = await fetch('api/' + path, { cache: 'no-store' });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error || response.statusText);
+  return body;
+}
+
+function when(iso) { return iso ? new Date(iso).toLocaleString() : ''; }
+
+async function showMemories() {
+  const { owner, memories } = await get('memories');
+  document.getElementById('owner').textContent = 'Owner: ' + owner;
+  if (!memories.length) return view.append(el('p', 'note', 'Nothing extracted yet. Extraction runs in the background, a minute or so after a conversation.'));
+  for (const memory of memories) {
+    const card = el('div', 'card');
+    if (memory.type) card.append(el('span', 'tag', memory.type));
+    card.append(el('span', '', memory.text), el('div', 'meta', when(memory.createdAt)));
+    view.append(card);
+  }
+}
+
+async function showSessions() {
+  const { owner, sessions } = await get('sessions');
+  document.getElementById('owner').textContent = 'Owner: ' + owner;
+  if (!sessions.length) return view.append(el('p', 'note', 'No stored sessions yet. Sessions are stored once capture is switched on.'));
+  for (const id of sessions) {
+    const card = el('div', 'card session', id);
+    card.onclick = () => showSession(id);
+    view.append(card);
+  }
+}
+
+async function showSession(id) {
+  view.replaceChildren(el('p', 'note', 'Loading…'));
+  try {
+    const { events } = await get('sessions/' + encodeURIComponent(id));
+    const back = el('button', 'refresh', '← All sessions');
+    back.onclick = () => render('sessions');
+    view.replaceChildren(back, el('p', 'meta', 'Session ' + id));
+    for (const event of events) {
+      const card = el('div', 'card');
+      card.append(el('div', 'role ' + event.role.toLowerCase(), event.role + (event.actor ? ' · ' + event.actor : '')),
+                  el('pre', '', event.text), el('div', 'meta', when(event.createdAt)));
+      view.append(card);
+    }
+  } catch (error) {
+    view.replaceChildren(el('p', 'error', error.message));
+  }
+}
+
+async function showSettings() {
+  const result = await get('settings');
+  if (!result.available) return view.append(el('p', 'note', result.message));
+  view.append(el('p', 'meta', 'Store ' + result.storeId + ', read live from the Control Plane'));
+  for (const [name, value] of Object.entries(result.settings)) {
+    const card = el('div', 'card');
+    card.append(el('div', 'role', name), el('pre', '', typeof value === 'string' ? value : JSON.stringify(value, null, 2)));
+    view.append(card);
+  }
+}
+
+async function render(name) {
+  current = name;
+  document.querySelectorAll('nav button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === name)));
+  view.replaceChildren(el('p', 'note', 'Loading…'));
+  try {
+    view.replaceChildren();
+    await { memories: showMemories, sessions: showSessions, settings: showSettings }[name]();
+  } catch (error) {
+    view.replaceChildren(el('p', 'error', error.message));
+  }
+}
+
+document.querySelectorAll('nav button').forEach(button => button.onclick = () => render(button.dataset.view));
+document.getElementById('refresh').onclick = () => render(current);
+render(current);
+</script>
+</body>
+</html>

@@ -28,6 +28,8 @@ const config = {
   },
   panels: [
     { id: 'vscode', name: 'Code', path: '/vscode/?folder=/workspace', icon: 'fa-code', visible: true },
-    { id: 'terminal', name: 'Terminal', path: '/terminal/', icon: 'fa-terminal', visible: true }
+    { id: 'terminal', name: 'Terminal', path: '/terminal/', icon: 'fa-terminal', visible: true },
+    { id: 'memory', name: 'Agent Memory', path: '/memory/', icon: 'fa-brain', visible: false },
+    { id: 'insight', name: 'Redis Insight', path: '/redisinsight/', icon: 'fa-database', visible: false }
   ]
 };

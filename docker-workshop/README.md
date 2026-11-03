@@ -68,7 +68,7 @@ VS Code settings and recovery data live in a named Docker volume. The host's mac
 `.venv` is not used.
 
 VS Code detects saved file changes made by the agent or Terminal. If you have
-unsaved edits, compare them with external changes before saving. The exercises are all in `agent.py`; run `uv run python main.py` after each saved edit. The guided exercises use live calls; their unit tests are grouped in the final evaluation. The capstone has a separate seeded bug; keep its independent checker unchanged.
+unsaved edits, compare them with external changes before saving. The exercises are all in `agent.py`; run `uv run --group iris python main.py` after each saved edit.
 
 Shell blocks have **Run code**, Python answers have **Copy code**, and prompts have **Copy text**. Save source edits first. Run code requires an idle shell; if the agent is running, enter `exit` or interrupt it before starting a new command. It does not save editor buffers or certify the command's result.
 

@@ -6,7 +6,7 @@ cd /workspace
 uv sync --frozen --group iris
 
 tmux -f /etc/tmux.conf new-session -d -s workshop -c /workspace \
-  'printf "Build a Coding Agent\n\nCode and Terminal share /workspace. Save with Ctrl/Cmd+S before running.\nFollow the Instructions panel before filling the exercises.\nUse Run code beside a shell command to run it here.\n\n"; exec bash --noprofile --rcfile /opt/editor/terminal.bash -i'
+  'printf "Give a coding agent useful memory\n\nCode and Terminal share /workspace. Save with Ctrl/Cmd+S before running.\nFollow the Instructions panel before filling the exercises.\nUse Run code beside a shell command to run it here.\n\n"; exec bash --noprofile --rcfile /opt/editor/terminal.bash -i'
 
 mkdir -p /opt/code-server/User
 if [ ! -f /opt/code-server/User/settings.json ]; then
@@ -38,12 +38,15 @@ editor_pid=$!
 ttyd -W -p 7681 --base-path /terminal -t fontSize=13 -t disableLeaveAlert=true \
   tmux -f /etc/tmux.conf attach-session -t workshop &
 terminal_pid=$!
+# Read-only view of this workspace's Agent Memory sessions, memories and store settings.
+/opt/student/.venv/bin/python /opt/agent-memory/inspector.py &
+inspector_pid=$!
 
 cleanup() {
-  kill "$code_pid" "$editor_pid" "$terminal_pid" 2>/dev/null || true
+  kill "$code_pid" "$editor_pid" "$terminal_pid" "$inspector_pid" 2>/dev/null || true
   tmux kill-session -t workshop 2>/dev/null || true
 }
 trap cleanup EXIT
 trap 'exit 0' TERM INT
 # Code, editor API and Terminal share one Python environment and lifecycle.
-wait -n "$code_pid" "$editor_pid" "$terminal_pid"
+wait -n "$code_pid" "$editor_pid" "$terminal_pid" "$inspector_pid"

@@ -1,21 +1,18 @@
 ---
 title: Recap: what goes into the request
 editorFile: agent.py
-slides: /slides/01-recap.md
 ---
 **4 minutes.** Part 1 built a working coding agent. Today we decide what that agent should *know*.
 
 ## Part 1 in one picture
 
-The model never touches your files. It *asks* for a tool, your Python code runs it, and the result goes back in the next request. Every turn, the application assembles a fresh request from:
+The model never touches your files. It *asks* for a tool, your Python code runs it, and the result goes back in the next request. Every turn, the application builds a fresh request from:
 
-1. System and project instructions
-2. Conversation history from this session
-3. The new user message
+1. The system prompt and the project's `AGENTS.md`
+2. The conversation so far in this session
+3. Your new message
 
-The model knows only what is in that request. Everything in this workshop is a decision about what else belongs there.
-
-[Diagram placeholder: user task → model → tool request → Python tool → tool result → model answer.]
+The model knows only what is in that request. Everything today is a decision about what else belongs there.
 
 ## Today's question
 
@@ -23,35 +20,34 @@ The model knows only what is in that request. Everything in this workshop is a d
 
 | Source | Owner | Where it lives |
 | --- | --- | --- |
-| The conversation | This session | Process memory; gone after a new session |
-| Project instructions | The project | `AGENTS.md` in the repository |
-| Personal preferences | You | **Redis Agent Memory**, learned from your work |
+| The conversation | This session | Gone when you start a new session |
+| Project conventions | The project | `AGENTS.md` in the repository |
+| Personal preferences | You | **Redis Agent Memory**, learned from your conversations |
 | Team procedures | The organisation | **Redis Agent Playbook**, published and versioned |
 
 ## How each section runs
 
-The instructor demonstrates each section, then you get **five minutes** for a *Your turn* card. Each card copies a ready-made version of `agent.py` from `solutions/steps/`. The code is there to read and understand, not to type.
+The instructor demonstrates, then you get **five minutes**. Each *Your turn* copies a ready-made `agent.py` from `solutions/steps/`; the code is there to read, not to type.
 
-You edit **`agent.py`**; the agent edits files in **`project/`**. After any change to `agent.py`: save, type `exit`, and relaunch.
+You edit **`agent.py`**; the agent edits files in **`project/`**. After changing `agent.py`, type `exit` and start it again.
 
 ## Your turn: get ready
 
-In the shell terminal, from the repository root:
+In the terminal:
 
 ```bash
 uv run --group iris python main.py
 ```
 
-At the `You >` prompt, enter `/status`. Capture, recall and Playbook should all be disabled. The commands you will use today:
+You'll see your owner ID, session ID, and which capabilities are on (all off for now). Commands you'll use:
 
-| Command | Shows |
+| Command | What it does |
 | --- | --- |
-| `/status` | Enabled capabilities, owner, session and the next step |
-| `/view-context` | The current context sources and the exact latest model request |
-| `/new-session` | Starts a fresh conversation (same owner); reloads `AGENTS.md` |
-| `/events` | Session events stored in Redis Agent Memory |
-| `/memories` | Long-term preferences Redis Agent Memory extracted for you |
-| `/skills` | The team procedure retrieved from Redis Agent Playbook |
-| `/verify` | Runs the independent checker against `project/validator.py` |
+| `/view-context` | Shows exactly what was sent to the model last |
+| `/new-session` | Starts a fresh conversation |
+| `/sessions`, `/resume <id>` | Lists your stored sessions and brings one back |
+| `/events`, `/memories` | What Redis Agent Memory stored, and what it learned |
+| `/skills` | The team procedure from Redis Agent Playbook |
+| `/verify` | Runs the project's tests |
 
 Next: [the amnesiac](/build?lesson=02-forgetting.md).
