@@ -5,7 +5,10 @@
         <button type="button" :aria-pressed="!readMode" @click="readMode = false">Guided slides</button>
         <button type="button" :aria-pressed="readMode" @click="readMode = true">Read text</button>
       </div>
-      <button ref="focusButton" type="button" :aria-pressed="focused" @click="toggleFocus">{{ focused ? 'Exit focus' : 'Focus mode' }}</button>
+      <div class="slide-modes">
+        <a class="download" :href="deckUrl" :download="deckFile">Download slides (PDF)</a>
+        <button ref="focusButton" type="button" :aria-pressed="focused" @click="toggleFocus">{{ focused ? 'Exit focus' : 'Focus mode' }}</button>
+      </div>
     </div>
     <p v-if="loading" role="status">Loading introduction…</p>
     <div v-else-if="error" role="alert">
@@ -32,8 +35,15 @@ import { splitSlides } from '../utils/slides'
 import { markdownToHtml } from '../utils/markdown'
 import { getBasePath } from '../utils/basePath'
 
+const DECK_FILE = 'agent-memory-workshop-slides.pdf'
+
 export default {
   props: { src: { type: String, required: true } },
+  computed: {
+    // The whole deck, rendered by scripts/render_slides.py; anyone with the guide's link can download it.
+    deckFile: () => DECK_FILE,
+    deckUrl: () => `${getBasePath()}/slides/${DECK_FILE}`
+  },
   data() { return { slides: [], index: 0, readMode: false, focused: false, loading: true, error: false, controller: null, blockedElements: [] } },
   methods: {
     render: markdownToHtml,
@@ -113,7 +123,8 @@ export default {
 button { background: #1f3545; color: #f1f5f9; border: 1px solid #698094; border-radius: 6px; padding: .5rem .7rem; cursor: pointer; font: inherit; }
 button[aria-pressed="true"] { background: #b92a23; border-color: #ff766e; }
 button:disabled { opacity: .45; cursor: default; }
-button:focus-visible, .lesson-slides:focus-visible { outline: 3px solid #a9c7ff; outline-offset: 3px; }
+a.download { color: #b7d5ff; padding: .5rem .2rem; }
+button:focus-visible, a.download:focus-visible, .lesson-slides:focus-visible { outline: 3px solid #a9c7ff; outline-offset: 3px; }
 .slide-body { overflow-wrap: anywhere; line-height: 1.6; }
 .slide-card { min-height: 18rem; padding: 1rem 0; }
 .slide-body :deep(h1) { font-size: clamp(1.5rem, 3vw, 2.7rem); line-height: 1.2; margin: .75rem 0 1.25rem; }
@@ -124,5 +135,7 @@ button:focus-visible, .lesson-slides:focus-visible { outline: 3px solid #a9c7ff;
 .is-focused { position: fixed; inset: 0; z-index: 1000; margin: 0; border-radius: 0; overflow-y: auto; padding: clamp(1rem, 4vw, 3rem); }
 .is-focused .slide-body { max-width: 1000px; margin-left: auto; margin-right: auto; font-size: 1.2rem; }
 .is-focused .slide-card { min-height: 65vh; }
+.is-focused .slide-body:has(img) { max-width: min(1600px, 96vw); }
+.is-focused .slide-body :deep(img) { max-height: 80vh; }
 .focus-hint { color: #a9bac8; font-size: .85rem; }
 </style>

@@ -11,7 +11,7 @@ import importlib.util
 from pathlib import Path
 
 _spec = importlib.util.spec_from_file_location(
-    'completed', Path(__file__).resolve().parents[1] / 'solutions/steps/03-playbook.py')
+    'completed', Path(__file__).resolve().parents[1] / 'agent.py')
 completed = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(completed)
 from tests.fakes import FakeClient, text, tool_turn

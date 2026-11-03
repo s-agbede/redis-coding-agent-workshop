@@ -1,0 +1,27 @@
+<section id="recall-code" data-transition="fade" style="background:#F5F3EE;color:#0B1B24;font-family:'Space Grotesk', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B92E25">03 · Recall</p>
+<h2 style="font-size:72px;font-weight:600;line-height:1.1;letter-spacing:-1px">The new task is the search query</h2>
+</div>
+<div style="display:flex;gap:48px">
+<div style="width:1100px;background:#0B1B24;border-radius:16px;padding:40px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;line-height:1.5;color:#E6EDF0"><span style="color:#FF8A7A">if</span> <span style="color:#FFD7A8">RECALL</span>:<br>&#160;&#160;&#160;&#160;found = services.memory.<span style="color:#FFD7A8">search_long_term_memory</span>(request={<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;<span style="color:#A8D5BA">'text'</span>: task,<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;<span style="color:#A8D5BA">'filter_'</span>: {<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;<span style="color:#A8D5BA">'owner_id'</span>: {<span style="color:#A8D5BA">'eq'</span>: session.owner},<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;<span style="color:#A8D5BA">'memory_type'</span>: {<span style="color:#A8D5BA">'eq'</span>: <span style="color:#A8D5BA">'coding_preference'</span>},<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;},<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;<span style="color:#A8D5BA">'limit'</span>: 5,<br>&#160;&#160;&#160;&#160;})<br>&#160;&#160;&#160;&#160;preferences = [item.text <span style="color:#FF8A7A">for</span> item <span style="color:#FF8A7A">in</span> found.items]</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;flex-direction:column;gap:8px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;font-weight:600;color:#B92E25">text</p>
+<p style="font-size:28px;color:#4A5560;line-height:1.4">The task itself, so results fit what you are doing now</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;font-weight:600;color:#B92E25">owner_id</p>
+<p style="font-size:28px;color:#4A5560;line-height:1.4">The stable owner, never the new session</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;font-weight:600;color:#B92E25">memory_type</p>
+<p style="font-size:28px;color:#4A5560;line-height:1.4">Our custom type: only what you said, never what the agent did</p>
+</div>
+</div>
+</div>
+<p style="font-size:28px;color:#4A5560">Section 4 in agent.py’s handle, run fresh for every task.</p>
+<aside>Set RECALL = True and open the Section 4 step in handle. The query is the new task, so search returns preferences relevant to what you are doing now.</aside>
+</section>

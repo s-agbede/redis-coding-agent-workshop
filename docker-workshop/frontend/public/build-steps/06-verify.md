@@ -1,12 +1,13 @@
 ---
 title: Trust, but verify
 editorFile: agent.py
+slides: /slides/06-verify.md
 ---
 **6-minute demo, 5 minutes for you.** All three sources guide one real task. The tests decide whether it worked.
 
 ## Demo: one task, three sources
 
-The project has an unfinished `validator.py` and a set of tests in `tests/`. The instructor starts a fresh session and asks:
+The project has an unfinished `validator.py` and a set of tests in `tests/`. With all three flags on, the instructor starts a fresh session and asks:
 
 ```text
 Implement validate_report in validator.py and make the tests pass.
@@ -18,7 +19,7 @@ The agent reads the code and tests, writes the function, and asks to run the tes
 
 | In the request | Source | Owner |
 | --- | --- | --- |
-| The Python 3.12 note | `AGENTS.md` | The project |
+| "Python with type hints" | `AGENTS.md` | The project |
 | "What you know about this user's preferences" | Redis Agent Memory | You |
 | "Team procedure from Redis Agent Playbook" | Redis Agent Playbook | The organisation |
 
@@ -46,7 +47,7 @@ This is a reference answer, not the agent's.
 
 | Knowledge | Today's example | Home |
 | --- | --- | --- |
-| Project convention | We target Python 3.12 | `AGENTS.md`, reviewed with the code |
+| Project convention | Python with type hints | `AGENTS.md`, reviewed with the code |
 | Personal preference | Google-style docstrings | Redis Agent Memory, learned from your conversations |
 | Team rule | How reports are validated | Redis Agent Playbook, published and versioned |
 

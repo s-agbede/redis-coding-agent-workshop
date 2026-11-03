@@ -1,4 +1,4 @@
-"""Run each stage's learner agent through the real loop, with the services mocked."""
+"""Run agent.handle through the real loop, with the model and services mocked."""
 import importlib.util
 import json
 from pathlib import Path
@@ -16,10 +16,11 @@ from runtime import Workshop
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load_agent(path: str):
-    spec = importlib.util.spec_from_file_location('replay_agent', ROOT / path)
+def load_agent(capture: bool = False, recall: bool = False, playbook: bool = False):
+    spec = importlib.util.spec_from_file_location('replay_agent', ROOT / 'agent.py')
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    module.CAPTURE, module.RECALL, module.PLAYBOOK = capture, recall, playbook
     return module
 
 
@@ -34,25 +35,24 @@ def write_call(path: str, content: str) -> ChatCompletionMessage:
     }])
 
 
-@pytest.mark.parametrize('path,capture,recall,playbook', [
-    ('agent.py', False, False, False),
-    ('solutions/steps/01-capture.py', True, False, False),
-    ('solutions/steps/02-recall.py', True, True, False),
-    ('solutions/steps/03-playbook.py', True, True, True),
-])
-def test_each_stage_uses_only_its_enabled_capabilities(tmp_path, path, capture, recall, playbook):
-    learner = load_agent(path)
-    (tmp_path / 'AGENTS.md').write_text('Use type hints.')
-    memory, published, client = Mock(), Mock(), Mock()
-    memory.search_long_term_memory.return_value.model_dump.return_value = {
-        'items': [{'text': 'The user prefers Google-style docstrings.'}],
-    }
-    published.retrieve.return_value = PublishedSkill(name='report-validation', version=2, instructions='Use Decimal.')
+def scripted_model() -> Mock:
+    client = Mock()
     client.chat.completions.create.side_effect = [
         reply(write_call('sample.py', 'def f() -> None: ...\n')),
         reply(ChatCompletionMessage(role='assistant', content='Created the sample.')),
     ]
-    app = Workshop(learner, client, memory, published, 'learner', tmp_path, tmp_path / 'out')
+    return client
+
+
+@pytest.mark.parametrize('capture,recall,playbook', [
+    (False, False, False), (True, False, False), (True, True, False), (True, True, True),
+])
+def test_each_flag_switches_on_only_its_own_step(tmp_path, capture, recall, playbook):
+    (tmp_path / 'AGENTS.md').write_text('Use type hints.')
+    memory, published = Mock(), Mock()
+    memory.search_long_term_memory.return_value.items = [SimpleNamespace(text='Prefers Google-style docstrings.')]
+    published.retrieve.return_value = PublishedSkill(name='report-validation', version=2, instructions='Use Decimal.')
+    app = Workshop(load_agent(capture, recall, playbook), scripted_model(), memory, published, 'learner', tmp_path, tmp_path / 'out')
     assert app.turn('Create a sample') == 'Created the sample.'
     assert (tmp_path / 'sample.py').is_file()
     assert memory.add_session_event.call_count == (2 if capture else 0)
@@ -65,13 +65,24 @@ def test_each_stage_uses_only_its_enabled_capabilities(tmp_path, path, capture, 
         assert memory.search_long_term_memory.call_args.kwargs['request']['filter_'] == {
             'owner_id': {'eq': 'learner'}, 'memory_type': {'eq': 'coding_preference'}}
     assert published.retrieve.called == playbook
-    request = app.state.last_request
-    assert ('Google-style docstrings' in request[1]['content']) == recall
-    assert ('report-validation, version 2' in str(request)) == playbook
+    if playbook:
+        assert published.retrieve.call_args.kwargs == {'min_score': 0.7}
+    request = str(app.state.last_request)
+    assert 'Use type hints.' in request
+    assert ('Prefers Google-style docstrings.' in request) == recall
+    assert ('report-validation, version 2' in request) == playbook
+
+
+def test_the_session_keeps_the_conversation_but_not_the_recalled_context(tmp_path):
+    memory = Mock()
+    memory.search_long_term_memory.return_value.items = [SimpleNamespace(text='Prefers Google-style docstrings.')]
+    app = Workshop(load_agent(recall=True), scripted_model(), memory, None, 'learner', tmp_path, tmp_path / 'out')
+    app.turn('Create a sample')
+    assert app.state.history[0] == {'role': 'user', 'content': 'Create a sample'}
+    assert 'Google-style' not in str(app.state.history)
 
 
 def test_agent_edits_agents_md_and_a_new_session_reloads_it(tmp_path):
-    learner = load_agent('agent.py')
     instructions = tmp_path / 'AGENTS.md'
     instructions.write_text('Use type hints.\n')
     edited = 'Use type hints.\nWe target Python 3.12.\n'
@@ -80,9 +91,15 @@ def test_agent_edits_agents_md_and_a_new_session_reloads_it(tmp_path):
         reply(write_call('AGENTS.md', edited)),
         reply(ChatCompletionMessage(role='assistant', content='Added it.')),
     ]
-    app = Workshop(learner, client, None, None, 'learner', tmp_path, tmp_path / 'out')
+    app = Workshop(load_agent(), client, None, None, 'learner', tmp_path, tmp_path / 'out')
     app.turn('Add a note to AGENTS.md that we target Python 3.12.')
     assert instructions.read_text() == edited
     assert '3.12' not in app.state.instructions  # Reloaded at the session boundary, not mid-session.
     app.command('/new-session')
     assert app.state.instructions == edited and app.state.history == []
+
+
+def test_a_capability_without_its_service_names_the_missing_setting(tmp_path):
+    app = Workshop(load_agent(capture=True), scripted_model(), None, None, 'learner', tmp_path, tmp_path / 'out')
+    with pytest.raises(ValueError, match='AGENT_MEMORY'):
+        app.turn('Create a sample')

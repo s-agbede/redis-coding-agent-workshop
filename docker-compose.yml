@@ -38,6 +38,12 @@ services:
       PLAYBOOK_API_KEY: ${PLAYBOOK_API_KEY:-}
       IRIS_OWNER_ID: ${IRIS_OWNER_ID:-}
       PLAYBOOK_SKILL_ID: ${PLAYBOOK_SKILL_ID:-}
+      AGENT_MEMORY_CONTROL_PLANE_URL: ${AGENT_MEMORY_CONTROL_PLANE_URL:-}
+      AGENT_MEMORY_ADMIN_TOKEN: ${AGENT_MEMORY_ADMIN_TOKEN:-}
+      # Instructor only: lets the Agent Memory panel edit the shared store's settings.
+      INSPECTOR_ALLOW_EDITS: ${INSPECTOR_ALLOW_EDITS:-}
+      # The workshop's own Redis: slash-command completion (FT.SUGADD / FT.SUGGET).
+      REDIS_URL: redis://redis:6379/0
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
@@ -48,21 +54,40 @@ services:
       start_period: 20s
     restart: unless-stopped
 
-  # Browse the Redis databases behind the workshop. The Playbook's two databases are
-  # pre-connected; the self-hosted Agent Memory database is added by docker-compose.selfhost.yml.
+  # The workshop's own Redis 8 (search and autocomplete built in). Also reachable from your
+  # terminal at localhost:6390 for runs outside the workbench.
+  redis:
+    image: redis:8.2.1
+    ports:
+      - "127.0.0.1:${WORKSHOP_REDIS_PORT:-6390}:6379"
+    volumes:
+      - workshop-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    restart: unless-stopped
+
+  # Browse the Redis databases behind the workshop. Slots 1 and 2 are set by
+  # scripts/workbench_with_iris_preview.sh (the Iris preview's databases); slot 3 is added by
+  # docker-compose.selfhost.yml (self-hosted Agent Memory).
   redisinsight:
     image: redis/redisinsight:3.2.0
     environment:
       RI_PROXY_PATH: /redisinsight
       RI_ACCEPT_TERMS_AND_CONDITIONS: "true"
-      RI_REDIS_HOST1: ${PLAYBOOK_REDIS_HOST:-host.docker.internal}
-      RI_REDIS_PORT1: ${PLAYBOOK_REDIS_METADATA_PORT:-6480}
-      RI_REDIS_ALIAS1: Playbook metadata
-      RI_REDIS_PASSWORD1: ${PLAYBOOK_REDIS_PASSWORD:-}
-      RI_REDIS_HOST2: ${PLAYBOOK_REDIS_HOST:-host.docker.internal}
-      RI_REDIS_PORT2: ${PLAYBOOK_REDIS_CONTENT_PORT:-6481}
-      RI_REDIS_ALIAS2: Playbook skills
-      RI_REDIS_PASSWORD2: ${PLAYBOOK_REDIS_PASSWORD:-}
+      RI_REDIS_HOST1: ${INSIGHT_DB1_HOST:-host.docker.internal}
+      RI_REDIS_PORT1: ${INSIGHT_DB1_PORT:-16480}
+      RI_REDIS_ALIAS1: ${INSIGHT_DB1_ALIAS:-Iris metadata (Memory stores, Playbook entries)}
+      RI_REDIS_PASSWORD1: ${INSIGHT_DB1_PASSWORD:-}
+      RI_REDIS_HOST2: ${INSIGHT_DB2_HOST:-host.docker.internal}
+      RI_REDIS_PORT2: ${INSIGHT_DB2_PORT:-16481}
+      RI_REDIS_ALIAS2: ${INSIGHT_DB2_ALIAS:-Iris content (memories, skills)}
+      RI_REDIS_PASSWORD2: ${INSIGHT_DB2_PASSWORD:-}
+      RI_REDIS_HOST4: redis
+      RI_REDIS_PORT4: "6379"
+      RI_REDIS_ALIAS4: Workshop Redis (command completion)
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -73,3 +98,4 @@ volumes:
   workbench-venv:
   code-server-data:
   redisinsight-data:
+  workshop-redis-data:

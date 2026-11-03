@@ -1,0 +1,91 @@
+{
+ "v": 4,
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-11-02T12:00:00Z"
+ },
+ "lists": "css",
+ "title": "Give a Coding Agent Useful Memory",
+ "order": [
+  "cover",
+  "part1",
+  "loop",
+  "request",
+  "question",
+  "sources",
+  "agenda",
+  "d1",
+  "amnesiac",
+  "notes",
+  "files-or-memory",
+  "yt1",
+  "d2",
+  "three-jobs",
+  "memory",
+  "store-settings",
+  "capture-code",
+  "capture-evidence",
+  "yt2",
+  "d3",
+  "scope",
+  "recall-code",
+  "compose",
+  "remember",
+  "forget",
+  "yt3",
+  "d4",
+  "personal-org",
+  "playbook-flow",
+  "skill-code",
+  "version2",
+  "yt4",
+  "d5",
+  "three-in-request",
+  "verify",
+  "yt5",
+  "owners",
+  "governance",
+  "close"
+ ],
+ "sections": {
+  "s0": {
+   "description": "Recap of Part 1 and today’s question: what should the agent know, where does it come from, and who owns it?",
+   "start": "cover"
+  },
+  "s1": {
+   "description": "The amnesiac and notes on the desk: conversation is lost, files survive.",
+   "start": "d1"
+  },
+  "s2": {
+   "description": "Capture with Redis Agent Memory: session events and background extraction.",
+   "start": "d2"
+  },
+  "s3": {
+   "description": "Recall in a fresh session: owner-scoped search composed into the request.",
+   "start": "d3"
+  },
+  "s4": {
+   "description": "The team’s way: one procedure published to Redis Agent Playbook, retrieved by every agent.",
+   "start": "d4"
+  },
+  "s5": {
+   "description": "Trust, but verify: three sources in one request, judged by an independent checker.",
+   "start": "d5"
+  },
+  "s6": {
+   "description": "Close: three sources, three owners, and the governance discussion.",
+   "start": "owners"
+  }
+ },
+ "faces": {
+  "space-grotesk": {
+   "family": "Space Grotesk",
+   "href": "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400..700&display=swap"
+  },
+  "jetbrains-mono": {
+   "family": "JetBrains Mono",
+   "href": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap"
+  }
+ },
+ "designSystems": []
+}

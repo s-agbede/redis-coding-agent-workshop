@@ -1,0 +1,27 @@
+<section id="capture-code" data-transition="fade" style="background:#F5F3EE;color:#0B1B24;font-family:'Space Grotesk', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B92E25">02 · Capture</p>
+<h2 style="font-size:72px;font-weight:600;line-height:1.1;letter-spacing:-1px">Keep who said what, in which session</h2>
+</div>
+<div style="display:flex;gap:48px">
+<div style="width:1000px;background:#0B1B24;border-radius:16px;padding:40px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;line-height:1.5;color:#E6EDF0"><span style="color:#FF8A7A">if</span> <span style="color:#FFD7A8">CAPTURE</span>:<br>&#160;&#160;&#160;&#160;services.memory.<span style="color:#FFD7A8">add_session_event</span>(<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;session_id=session.session_id,<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;actor_id=session.owner,<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;role=models.MessageRole.USER,<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;content=[models.Text(text=task)],<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;created_at=datetime.now(timezone.utc),<br>&#160;&#160;&#160;&#160;)</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:28px">
+<div style="display:flex;flex-direction:column;gap:8px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;font-weight:600;color:#B92E25">role</p>
+<p style="font-size:28px;color:#4A5560;line-height:1.4">USER or ASSISTANT, so extraction learns your preferences, not the model’s suggestions</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;font-weight:600;color:#B92E25">actor_id</p>
+<p style="font-size:28px;color:#4A5560;line-height:1.4">Your stable owner ID, or coding-assistant</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:32px;font-weight:600;color:#B92E25">session_id</p>
+<p style="font-size:28px;color:#4A5560;line-height:1.4">Groups one conversation’s events</p>
+</div>
+</div>
+</div>
+<p style="font-size:28px;color:#4A5560">In agent.py’s handle: your message before the model is called, the answer after it. Tool calls aren’t recorded.</p>
+<aside>Set CAPTURE = True in agent.py and open handle: show the Section 3 step, and Section 3 again for the answer. The roles matter: swap them and extraction would learn the model’s suggestions as your preferences. Save, exit, relaunch, then restate the preference: earlier messages were never recorded.</aside>
+</section>

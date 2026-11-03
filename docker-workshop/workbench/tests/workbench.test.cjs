@@ -72,6 +72,11 @@ test('builds native code-server file payload URLs for relative and nested worksp
   }
 });
 
+test('a requested line opens the file at that line, and a bad line falls back to the top', () => {
+  assert.equal(nativeFileTarget(new URL(fileUrl({ type: 'open-workshop-file', path: 'agent.py', line: '100' }), origin)), '/workspace/agent.py:100:1');
+  assert.equal(nativeFileTarget(new URL(fileUrl({ type: 'open-workshop-file', path: 'agent.py', line: '0; rm' }), origin)), '/workspace/agent.py:1:1');
+});
+
 test('rejects malformed, absolute, traversal and encoded traversal paths', () => {
   for (const path of [null, 10, '', '/etc/passwd', '../agent.py', 'capstone/../../a', 'a/./b', 'a//b', 'a\\b', '%2e%2e/a', 'a%2fb', 'https://evil.test/a', 'a?x=y', 'a#b', 'a\n.py']) {
     assert.equal(fileUrl({ type: 'open-workshop-file', path }), null, String(path));

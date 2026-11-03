@@ -26,6 +26,10 @@
   .role { font-weight:600; font-size:12px; color:var(--blue); }
   .role.user { color:var(--accent); }
   pre { margin:0; white-space:pre-wrap; word-break:break-word; font:12px/1.5 ui-monospace, Menlo, monospace; }
+  .head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .editor { margin-top:8px; }
+  .editor textarea { width:100%; background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:8px; font:12px/1.5 ui-monospace, Menlo, monospace; }
+  .buttons { display:flex; gap:6px; margin-top:6px; }
 </style>
 </head>
 <body>
@@ -53,10 +57,11 @@ function el(tag, className, text) {
 
 async function get(path) {
   const response = await fetch('api/' + path, { cache: 'no-store' });
-  const body = await response.json();
-  if (!response.ok) throw new Error(body.error || response.statusText);
-  return body;
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || response.statusText);
+  return result;
 }
+const save = (name, value) => post('settings/' + name, { value });
 
 function when(iso) { return iso ? new Date(iso).toLocaleString() : ''; }
 
@@ -66,8 +71,18 @@ async function showMemories() {
   if (!memories.length) return view.append(el('p', 'note', 'Nothing extracted yet. Extraction runs in the background, a minute or so after a conversation.'));
   for (const memory of memories) {
     const card = el('div', 'card');
-    if (memory.type) card.append(el('span', 'tag', memory.type));
-    card.append(el('span', '', memory.text), el('div', 'meta', when(memory.createdAt)));
+    const head = el('div', 'head');
+    const text = el('div');
+    if (memory.type) text.append(el('span', 'tag', memory.type));
+    text.append(el('span', '', memory.text));
+    const forget = el('button', 'refresh', 'Forget');
+    forget.onclick = async () => {
+      if (!confirm('Forget this memory? It is deleted from Redis Agent Memory.\n\n' + memory.text)) return;
+      try { await post('memories/' + encodeURIComponent(memory.id) + '/forget', {}); render('memories'); }
+      catch (error) { card.append(el('p', 'error', error.message)); }
+    };
+    head.append(text, forget);
+    card.append(head, el('div', 'meta', when(memory.createdAt)));
     view.append(card);
   }
 }
@@ -101,15 +116,106 @@ async function showSession(id) {
   }
 }
 
+const EDITABLE = ['shortMemory', 'longTermMemory', 'extractionCadence', 'summarization', 'longTermMemoryExclusions'];
+const NEW_TYPE = { name: 'new_type', description: 'What this memory type holds.', fields: [],
+                   extractionStrategy: { enabled: true, prompt: 'Extract … only when the user says …' } };
+
+async function post(path, body) {
+  const response = await fetch('api/' + path, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || response.statusText);
+  return result;
+}
+
+function editor(name, value, onSaved) {
+  const box = el('div', 'editor');
+  const text = el('textarea');
+  text.value = JSON.stringify(value ?? null, null, 2);
+  text.rows = Math.min(24, text.value.split('\n').length + 2);
+  const status = el('p', 'meta');
+  const saveButton = el('button', 'refresh', 'Save');
+  const cancel = el('button', 'refresh', 'Cancel');
+  cancel.onclick = () => render('settings');
+  saveButton.onclick = async () => {
+    let parsed;
+    try { parsed = JSON.parse(text.value); } catch { return status.replaceChildren(el('span', 'error', 'That is not valid JSON.')); }
+    status.textContent = 'Saving…';
+    try { onSaved(await save(name, parsed)); } catch (error) { status.replaceChildren(el('span', 'error', error.message)); }
+  };
+  const buttons = el('div', 'buttons');
+  buttons.append(saveButton, cancel);
+  box.append(text, buttons, status);
+  return box;
+}
+
+function promptEditor(types, index, onSaved) {
+  const box = el('div', 'editor');
+  box.append(el('div', 'meta', 'Extraction prompt for ' + types[index].name));
+  const text = el('textarea');
+  text.value = types[index].extractionStrategy?.prompt || '';
+  text.rows = 6;
+  const status = el('p', 'meta');
+  const saveButton = el('button', 'refresh', 'Save prompt');
+  saveButton.onclick = async () => {
+    status.textContent = 'Saving…';
+    try { onSaved(await post('custom-types/' + encodeURIComponent(types[index].name) + '/prompt', { prompt: text.value })); }
+    catch (error) { status.replaceChildren(el('span', 'error', error.message)); }
+  };
+  box.append(text, saveButton, status);
+  return box;
+}
+
+function addTypeForm(onSaved) {
+  const box = el('div', 'editor');
+  const open = el('button', 'refresh', 'Add a custom type');
+  open.onclick = () => {
+    const text = el('textarea');
+    text.value = JSON.stringify(NEW_TYPE, null, 2);
+    text.rows = 12;
+    const status = el('p', 'meta', 'A store holds at most 3 custom types. Field types: str, int, float, bool, list[str].');
+    const create = el('button', 'refresh', 'Create type');
+    create.onclick = async () => {
+      let parsed;
+      try { parsed = JSON.parse(text.value); } catch { return status.replaceChildren(el('span', 'error', 'That is not valid JSON.')); }
+      status.textContent = 'Creating…';
+      try { onSaved(await post('custom-types', { value: parsed })); } catch (error) { status.replaceChildren(el('span', 'error', error.message)); }
+    };
+    box.replaceChildren(text, create, status);
+  };
+  box.append(open);
+  return box;
+}
+
+function drawSettings(result, notice) {
+  view.replaceChildren(el('p', 'meta', 'Store ' + result.storeId + ', read live from the Control Plane'
+    + (result.editable ? '. Changes apply to everyone using this store.' : '. Read only.')));
+  if (notice) view.append(el('p', 'note', notice));
+  const redraw = saved => drawSettings(saved, 'Saved. Showing the settings the Control Plane now holds.');
+  for (const [name, value] of Object.entries(result.settings)) {
+    const card = el('div', 'card');
+    const head = el('div', 'head');
+    head.append(el('div', 'role', name));
+    const body = el('pre', '', typeof value === 'string' ? value : JSON.stringify(value, null, 2));
+    if (result.editable && EDITABLE.includes(name)) {
+      const edit = el('button', 'refresh', 'Edit');
+      edit.onclick = () => body.replaceWith(editor(name, value, redraw));
+      head.append(edit);
+    }
+    card.append(head, body);
+    if (result.editable && name === 'customMemoryTypes') {
+      const types = Array.isArray(value) ? value : [];
+      types.forEach((_, index) => card.append(promptEditor(types, index, redraw)));
+      card.append(addTypeForm(redraw));
+    }
+    view.append(card);
+  }
+}
+
 async function showSettings() {
   const result = await get('settings');
   if (!result.available) return view.append(el('p', 'note', result.message));
-  view.append(el('p', 'meta', 'Store ' + result.storeId + ', read live from the Control Plane'));
-  for (const [name, value] of Object.entries(result.settings)) {
-    const card = el('div', 'card');
-    card.append(el('div', 'role', name), el('pre', '', typeof value === 'string' ? value : JSON.stringify(value, null, 2)));
-    view.append(card);
-  }
+  drawSettings(result);
 }
 
 async function render(name) {

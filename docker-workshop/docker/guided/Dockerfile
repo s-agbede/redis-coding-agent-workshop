@@ -29,7 +29,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --group iris
 
 COPY agent.py main.py tools.py ui.py pyproject.toml uv.lock README.md WORKSHOP.md FACILITATOR.md /opt/workshop/
-COPY runtime.py context.py playbook.py /opt/workshop/
+COPY runtime.py context.py playbook.py completion.py /opt/workshop/
 COPY project /opt/workshop/project
 COPY skills /opt/workshop/skills
 COPY docs /opt/workshop/docs

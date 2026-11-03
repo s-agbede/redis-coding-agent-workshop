@@ -485,6 +485,7 @@ function getWorkshopFileUrl(data, origin) {
   let column = '1';
   if (data.type === 'open-workshop-file') {
     path = data.path;
+    if (/^[1-9][0-9]*$/.test(String(data.line ?? ''))) line = String(data.line);
   } else if (data.type === 'open-vscode-file' && typeof data.href === 'string') {
     let url;
     try { url = new URL(data.href, origin); } catch { return null; }

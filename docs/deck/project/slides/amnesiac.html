@@ -1,0 +1,40 @@
+<section id="amnesiac" data-transition="fade" style="background:#F5F3EE;color:#0B1B24;font-family:'Space Grotesk', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B92E25">01 · The amnesiac</p>
+<h2 style="font-size:72px;font-weight:600;line-height:1.1;letter-spacing:-1px">A new session sends a different request</h2>
+</div>
+<div style="display:flex;align-items:center;gap:24px">
+<div style="flex:1;display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#55636B">Session 1</p>
+<div style="background:#FDFCFA;border:1px solid #DCD8CF;border-left:12px solid #55636B;border-radius:12px;padding:24px 32px">
+<h3 style="font-size:32px;font-weight:600">System and project instructions</h3>
+</div>
+<div style="background:#FDFCFA;border:1px solid #DCD8CF;border-left:12px solid #8A9BA4;border-radius:12px;padding:24px 32px;display:flex;flex-direction:column;gap:8px">
+<h3 style="font-size:32px;font-weight:600">Conversation</h3>
+<p style="font-size:24px;color:#4A5560">“By the way, I like Google-style docstrings on my functions.”</p>
+</div>
+<div style="background:#FDFCFA;border:1px solid #DCD8CF;border-left:12px solid #0B1B24;border-radius:12px;padding:24px 32px">
+<h3 style="font-size:32px;font-weight:600">Task: a URL slug function</h3>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+<p style="font-size:24px;font-family:'JetBrains Mono', 'Courier New', monospace;color:#55636B">/new-session</p>
+<x-connector style="width:96px;color:#55636B;border-width:3px"></x-connector>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#55636B">Session 2</p>
+<div style="background:#FDFCFA;border:1px solid #DCD8CF;border-left:12px solid #55636B;border-radius:12px;padding:24px 32px">
+<h3 style="font-size:32px;font-weight:600">System and project instructions</h3>
+</div>
+<div style="background:#F5F3EE;border:2px dashed #8A9BA4;border-radius:12px;padding:24px 32px;display:flex;flex-direction:column;gap:8px">
+<h3 style="font-size:32px;font-weight:600;color:#55636B">Conversation</h3>
+<p style="font-size:24px;color:#55636B">Empty. The preference is not sent.</p>
+</div>
+<div style="background:#FDFCFA;border:1px solid #DCD8CF;border-left:12px solid #0B1B24;border-radius:12px;padding:24px 32px">
+<h3 style="font-size:32px;font-weight:600">Task: the same slug function</h3>
+</div>
+</div>
+</div>
+<p style="font-size:44px;font-weight:600">The model didn’t forget. The app stopped sending it.</p>
+<aside>Demo: say “By the way, I like Google-style docstrings on my functions.”, then ask for the slug function: it gets a Google-style docstring. Ask the room: after /new-session, will the next function get one? /new-session, ask for the same slug function, then /view-context: the request is the system prompt, AGENTS.md and the new message. Keep early tasks unrelated to the project (“Show me a function that…”), or the agent starts working on validator.py.</aside>
+</section>

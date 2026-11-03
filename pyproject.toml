@@ -16,6 +16,8 @@ dev = ["pytest>=8.0"]
 iris = [
     "redis-agent-memory>=0.4.1",
     "redis-agent-playbook>=0.1.0b1",
+    "redis>=5.0",
+    "prompt-toolkit>=3.0",
 ]
 
 [tool.pytest.ini_options]

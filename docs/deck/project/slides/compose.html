@@ -1,0 +1,20 @@
+<section id="compose" data-transition="fade" style="background:#F5F3EE;color:#0B1B24;font-family:'Space Grotesk', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B92E25">03 · Recall</p>
+<h2 style="font-size:72px;font-weight:600;line-height:1.1;letter-spacing:-1px">What was found becomes one short message</h2>
+</div>
+<div style="display:flex;gap:48px">
+<div style="width:1100px;background:#0B1B24;border-radius:16px;padding:40px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;line-height:1.5;color:#E6EDF0">messages = [{<span style="color:#A8D5BA">'role'</span>: <span style="color:#A8D5BA">'system'</span>, <span style="color:#A8D5BA">'content'</span>: SYSTEM + agents_md}]<br>recalled = []<br><span style="color:#FF8A7A">if</span> preferences:<br>&#160;&#160;&#160;&#160;recalled.append(<span style="color:#A8D5BA">"What you know about this user's preferences:\n"</span> + bullets)<br><span style="color:#FF8A7A">if</span> skill:<br>&#160;&#160;&#160;&#160;recalled.append(<span style="color:#A8D5BA">f"Team procedure ({skill.name}, version {skill.version}):\n"</span> + rules)<br><span style="color:#FF8A7A">if</span> recalled:<br>&#160;&#160;&#160;&#160;messages.append({<span style="color:#A8D5BA">'role'</span>: <span style="color:#A8D5BA">'system'</span>, <span style="color:#A8D5BA">'content'</span>: <span style="color:#A8D5BA">'\n\n'</span>.join(recalled)})<br>messages += session.history + [{<span style="color:#A8D5BA">'role'</span>: <span style="color:#A8D5BA">'user'</span>, <span style="color:#A8D5BA">'content'</span>: task}]</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:28px">
+<p style="font-size:24px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#55636B">The fresh request</p>
+<p style="font-size:28px;background:#FDFCFA;border:1px solid #DCD8CF;border-left:12px solid #55636B;border-radius:12px;padding:16px 24px">System prompt and AGENTS.md</p>
+<p style="font-size:28px;font-weight:600;background:#FDFCFA;border:3px solid #B92E25;border-left:12px solid #B92E25;border-radius:12px;padding:16px 24px">What you know about this user’s preferences</p>
+<p style="font-size:28px;background:#FDFCFA;border:1px solid #DCD8CF;border-left:12px solid #8A9BA4;border-radius:12px;padding:16px 24px">Conversation: this session only</p>
+<p style="font-size:28px;background:#FDFCFA;border:1px solid #DCD8CF;border-left:12px solid #0B1B24;border-radius:12px;padding:16px 24px">New task</p>
+</div>
+</div>
+<p style="font-size:28px;color:#4A5560">Rebuilt for every task, so stale results never pile up in the conversation.</p>
+<aside>This is the “Build the request” step in handle. Save, exit, relaunch: a new session, same owner. Ask for the de-duplication function; the terminal shows what was recalled, and /view-context shows it as the second message.</aside>
+</section>

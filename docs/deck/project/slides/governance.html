@@ -1,0 +1,33 @@
+<section id="governance" data-transition="fade" style="background:#F5F3EE;color:#0B1B24;font-family:'Space Grotesk', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B92E25">Discussion · 10 minutes</p>
+<h2 style="font-size:72px;font-weight:600;line-height:1.1;letter-spacing:-1px">Taking this to production</h2>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:32px">
+<div style="background:#FDFCFA;border:1px solid #DCD8CF;border-radius:16px;padding:24px 32px;display:flex;flex-direction:column;gap:12px">
+<h3 style="font-size:32px;font-weight:600">Who can read a memory?</h3>
+<p style="font-size:24px;color:#4A5560;line-height:1.4">Owner filters select records. Isolation comes from stores, credentials and namespaces.</p>
+</div>
+<div style="background:#FDFCFA;border:1px solid #DCD8CF;border-radius:16px;padding:24px 32px;display:flex;flex-direction:column;gap:12px">
+<h3 style="font-size:32px;font-weight:600">Can we correct or delete it?</h3>
+<p style="font-size:24px;color:#4A5560;line-height:1.4">Redis Agent Memory has update and bulk-delete operations for long-term memories.</p>
+</div>
+<div style="background:#FDFCFA;border:1px solid #DCD8CF;border-radius:16px;padding:24px 32px;display:flex;flex-direction:column;gap:12px">
+<h3 style="font-size:32px;font-weight:600">What about sensitive data?</h3>
+<p style="font-size:24px;color:#4A5560;line-height:1.4">Extraction learns from what you capture. Decide what to capture; prompts aren’t redaction.</p>
+</div>
+<div style="background:#FDFCFA;border:1px solid #DCD8CF;border-radius:16px;padding:24px 32px;display:flex;flex-direction:column;gap:12px">
+<h3 style="font-size:32px;font-weight:600">Who approves a procedure?</h3>
+<p style="font-size:24px;color:#4A5560;line-height:1.4">Playbook separates creating a version from publishing it. Only the publisher needs write access.</p>
+</div>
+<div style="background:#FDFCFA;border:1px solid #DCD8CF;border-radius:16px;padding:24px 32px;display:flex;flex-direction:column;gap:12px">
+<h3 style="font-size:32px;font-weight:600">How do changes roll out?</h3>
+<p style="font-size:24px;color:#4A5560;line-height:1.4">Agents load the current published version; its source and version appear in every request.</p>
+</div>
+<div style="background:#0B1B24;border-radius:16px;padding:24px 32px;display:flex;flex-direction:column;gap:12px">
+<h3 style="font-size:32px;font-weight:600;color:#F5F3EE">In your team</h3>
+<p style="font-size:24px;color:#B9C6CC;line-height:1.4">Which agent knowledge needs an owner, a version and an audit trail?</p>
+</div>
+</div>
+<aside>Confirm how these operations behave on your deployment before claiming more than the slide says. The facilitator guide has the SDK operation names: update_long_term_memory, bulk_delete_long_term_memories and delete_session_memory for Agent Memory, plus namespaces; Playbook’s create, publish, proposal and withdraw operations.</aside>
+</section>

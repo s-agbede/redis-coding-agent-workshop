@@ -12,17 +12,30 @@ from uuid import uuid4
 
 from openai import OpenAI
 from pydantic import BaseModel, ConfigDict, Field
-from redis_agent_memory import AgentMemory, models
+from redis_agent_memory import AgentMemory
 
 import tools
 import ui
-from context import PublishedSkill
 from playbook import PlaybookStore
 
-SYSTEM = 'You are a coding assistant working in this project. Use your tools to read and change files.'
+# Slash commands and the description shown beside each in the suggestion menu.
+COMMANDS = {
+    '/status': 'Owner, session and what is switched on',
+    '/view-context': 'Exactly what was sent to the model last',
+    '/new-session': 'Start a fresh conversation',
+    '/sessions': 'Your stored sessions',
+    '/resume': 'Bring a stored session back: /resume <id>',
+    '/events': 'What Agent Memory stored for this session',
+    '/memories': 'What Agent Memory learned about you',
+    '/forget': 'Forget one of your memories: /forget <id>',
+    '/skills': 'The team procedure from Agent Playbook',
+    '/publish-skill': 'Publish the team skill (instructor)',
+    '/verify': "Run the project's tests",
+    '/help': 'List the commands',
+}
 HELP = (
     '/status  /view-context  /new-session  /sessions  /resume <id>\n'
-    '/events  /memories  /skills  /publish-skill (instructor)  /verify  /help  exit'
+    '/events  /memories  /forget <id>  /skills  /publish-skill (instructor)  /verify  /help  exit'
 )
 
 
@@ -33,8 +46,6 @@ class Session(BaseModel):
     session_id: str = Field(default_factory=lambda: uuid4().hex)
     instructions: str
     history: list[Any] = Field(default_factory=list)
-    preferences: list[dict[str, Any]] = Field(default_factory=list)
-    skill: PublishedSkill | None = None
     last_request: list[dict[str, Any]] = Field(default_factory=list)
 
     @classmethod
@@ -51,19 +62,6 @@ def serialized(messages: list[Any]) -> list[dict[str, Any]]:
         dict(message) if isinstance(message, dict) else message.model_dump(mode='json', exclude_none=True)
         for message in messages
     ]
-
-
-def compose(state: Session, learner: ModuleType, prompt: str) -> list[Any]:
-    system = SYSTEM + ('\n\nProject instructions (AGENTS.md):\n' + state.instructions if state.instructions else '')
-    messages: list[Any] = [{'role': 'system', 'content': system}]
-    # Recalled context is rebuilt for every task, so stale results never pile up in history.
-    extra = [
-        learner.preference_context(state.preferences) if state.preferences else '',
-        learner.skill_context(state.skill) if state.skill else '',
-    ]
-    if any(extra):
-        messages.append({'role': 'system', 'content': '\n\n'.join(part for part in extra if part)})
-    return messages + list(state.history) + [{'role': 'user', 'content': prompt}]
 
 
 def describe(message: dict[str, Any]) -> str:
@@ -123,6 +121,27 @@ def project_tools(project: Path) -> dict[str, Callable[..., str]]:
                 str_replace=str_replace, run_bash=run_bash)
 
 
+class Services:
+    """What agent.handle needs from the runtime: the model, Agent Memory, Playbook and the project's tools."""
+
+    def __init__(self, client: OpenAI, memory: AgentMemory | None, playbook: PlaybookStore | None,
+                 tools: dict[str, Callable[..., str]], on_request: Callable[[list[Any]], None]) -> None:
+        self.client, self.tools, self.on_request = client, tools, on_request
+        self._memory, self._playbook = memory, playbook
+
+    @property
+    def memory(self) -> AgentMemory:
+        if self._memory is None:
+            raise ValueError('Redis Agent Memory is not configured. Add the AGENT_MEMORY_* settings to .env.')
+        return self._memory
+
+    @property
+    def playbook(self) -> PlaybookStore:
+        if self._playbook is None:
+            raise ValueError('Redis Agent Playbook is not configured. Add the PLAYBOOK_* settings to .env.')
+        return self._playbook
+
+
 class Workshop:
     def __init__(self, learner: ModuleType, client: OpenAI, memory: AgentMemory | None,
                  playbook: PlaybookStore | None, owner: str, project: Path, output: Path) -> None:
@@ -148,8 +167,8 @@ class Workshop:
         on = {True: 'on', False: 'off'}
         print(f'Owner:    {self.state.owner}')
         print(f'Session:  {self.state.session_id}')
-        print(f'Capture:  {on[self.learner.CAPTURE_ENABLED]}   Recall: {on[self.learner.RECALL_ENABLED]}'
-              f'   Playbook: {on[self.learner.PLAYBOOK_ENABLED]}')
+        print(f'Capture:  {on[self.learner.CAPTURE]}   Recall: {on[self.learner.RECALL]}'
+              f'   Playbook: {on[self.learner.PLAYBOOK]}')
         print(f'Memory:   {"configured" if self.memory else "not configured"}')
         playbook = 'not configured'
         if self.playbook:
@@ -217,9 +236,20 @@ class Workshop:
                 'limit': 50,
             }).model_dump(mode='json', by_alias=True)['items']
             for item in items:
-                print(f'- {item["text"]} ({item.get("memoryType", "?")})')
+                print(f'- [{item["id"][:8]}] {item["text"]} ({item.get("memoryType", "?")})')
             if not items:
                 print('Nothing extracted yet. Extraction runs in the background; try again shortly.')
+        elif name == '/forget':
+            if not argument:
+                raise ValueError('Usage: /forget <id>. /memories shows each memory with its id.')
+            items = self.memory_client().search_long_term_memory(request={
+                'filter_': {'owner_id': {'eq': self.state.owner}}, 'limit': 50,
+            }).model_dump(mode='json', by_alias=True)['items']
+            match = next((item for item in items if item['id'].startswith(argument.strip())), None)
+            if match is None:
+                raise ValueError(f'No memory of yours starts with {argument.strip()}. /memories lists them.')
+            self.memory_client().bulk_delete_long_term_memories(memory_ids=[match['id']])
+            print(f'Forgot: {match["text"]}')
         elif name == '/publish-skill':
             entry_id, version = self.playbook_store().publish(Path(__file__).resolve().parent / 'skills/report-validation')
             print(f'Published report-validation as entry {entry_id}, version {version}.')
@@ -243,28 +273,9 @@ class Workshop:
         self.state.last_request = serialized(messages)
 
     def turn(self, prompt: str) -> str | None:
-        learner, state = self.learner, self.state
-        state.preferences, state.skill, state.last_request = [], None, []
-        if learner.CAPTURE_ENABLED:
-            learner.record_event(self.memory_client(), state.session_id, state.owner, models.MessageRole.USER, prompt)
-        if learner.RECALL_ENABLED:
-            state.preferences = learner.recall_preferences(self.memory_client(), state.owner, prompt)
-            ui.info('Recalled: ' + ('; '.join(item['text'] for item in state.preferences) or 'nothing'))
-        if learner.PLAYBOOK_ENABLED:
-            state.skill = self.playbook_store().retrieve(prompt)
-            ui.info(f'Team procedure: {state.skill.name}, version {state.skill.version}' if state.skill
-                    else 'Team procedure: none for this task')
-        messages = compose(state, learner, prompt)
-        context_size = len(messages) - len(state.history) - 1
-        try:
-            learner.run_agent(self.client, messages, learner.TOOL_SCHEMAS, self.registry,
-                              max_iters=int(os.environ.get('AGENT_MAX_ITERS', '25')), on_request=self.snapshot_request)
-        finally:
-            state.history = messages[context_size:]
-        answer = getattr(messages[-1], 'content', None)
+        self.state.last_request = []
+        services = Services(self.client, self.memory, self.playbook, self.registry, self.snapshot_request)
+        answer = self.learner.handle(prompt, self.state, services)
         if answer:
             ui.show_answer(answer)
-            if learner.CAPTURE_ENABLED:
-                learner.record_event(self.memory_client(), state.session_id, 'coding-assistant',
-                                     models.MessageRole.ASSISTANT, answer)
         return answer

@@ -13,7 +13,7 @@ def prepare_workspace(source: Path, workspace: Path) -> None:
                 shutil.copytree(origin, destination)
             else:
                 shutil.copy2(origin, destination)
-    for name in ('main.py', 'runtime.py', 'context.py', 'playbook.py', 'tools.py', 'ui.py',
+    for name in ('main.py', 'runtime.py', 'context.py', 'playbook.py', 'completion.py', 'tools.py', 'ui.py',
                  'pyproject.toml', 'uv.lock', 'README.md', 'WORKSHOP.md', 'FACILITATOR.md'):
         if (source / name).is_file():
             shutil.copy2(source / name, workspace / name)

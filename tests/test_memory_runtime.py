@@ -11,7 +11,7 @@ pytest.importorskip('redis_agent_playbook')
 import runtime
 
 ROOT = Path(__file__).resolve().parents[1]
-LEARNER = SimpleNamespace(CAPTURE_ENABLED=False, RECALL_ENABLED=False, PLAYBOOK_ENABLED=False)
+LEARNER = SimpleNamespace(CAPTURE=False, RECALL=False, PLAYBOOK=False)
 
 
 def test_new_session_reloads_agents_md_and_clears_the_conversation(tmp_path):
@@ -25,22 +25,6 @@ def test_new_session_reloads_agents_md_and_clears_the_conversation(tmp_path):
     assert app.state.session_id != previous and app.state.owner == 'owner'
     assert app.state.history == [] and app.state.last_request == []
     assert 'Use uv.' in app.state.instructions
-
-
-def test_request_has_project_instructions_then_recalled_context_then_the_task(tmp_path):
-    (tmp_path / 'AGENTS.md').write_text('Use type hints.')
-    state = runtime.Session.start('owner', tmp_path)
-    state.history = [{'role': 'user', 'content': 'Earlier task'}, {'role': 'assistant', 'content': 'Earlier answer'}]
-    learner = Mock()
-    learner.preference_context.side_effect = lambda items: 'Prefs: ' + items[0]['text']
-    state.preferences = [{'text': 'Google-style docstrings'}]
-    messages = runtime.compose(state, learner, 'Write a function')
-    assert 'Use type hints.' in messages[0]['content']
-    assert messages[1] == {'role': 'system', 'content': 'Prefs: Google-style docstrings'}
-    assert messages[-2]['content'] == 'Earlier answer'
-    assert messages[-1] == {'role': 'user', 'content': 'Write a function'}
-    state.preferences = []
-    assert 'Google-style' not in str(runtime.compose(state, learner, 'Another task'))
 
 
 def test_sessions_lists_stored_sessions_and_resume_restores_the_conversation(tmp_path, capsys):
@@ -114,3 +98,17 @@ def test_tools_cannot_edit_or_read_outside_project(tmp_path):
     with pytest.raises(ValueError, match='outside'):
         registry['write_file']('../outside.txt', 'overwrite')
     assert secret.read_text() == 'do not read'
+
+
+def test_memories_shows_short_ids_and_forget_deletes_by_id(tmp_path, capsys):
+    memory = Mock()
+    memory.search_long_term_memory.return_value.model_dump.return_value = {'items': [
+        {'id': 'abc12345full', 'text': 'Prefers Google-style docstrings.', 'memoryType': 'coding_preference'}]}
+    app = runtime.Workshop(LEARNER, Mock(), memory, None, 'owner', tmp_path, tmp_path / 'out')
+    app.command('/memories')
+    assert '[abc12345]' in capsys.readouterr().out
+    app.command('/forget abc12345')
+    memory.bulk_delete_long_term_memories.assert_called_once_with(memory_ids=['abc12345full'])
+    assert 'Forgot' in capsys.readouterr().out
+    with pytest.raises(ValueError, match='No memory'):
+        app.command('/forget zzz')

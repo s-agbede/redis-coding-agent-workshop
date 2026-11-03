@@ -20,7 +20,7 @@ def load(path: Path):
 
 
 def test_completed_file_retains_history_and_executes_actual_reader(tmp_path):
-    learner = load(ROOT / "solutions/steps/03-playbook.py")
+    learner = load(ROOT / "agent.py")
     note = tmp_path / "note.md"
     note.write_text("release evidence")
     client = FakeClient([tool_turn(("read", "read_file", {"path": str(note)})), text("done"), text("follow-up")])

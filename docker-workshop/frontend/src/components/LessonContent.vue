@@ -12,7 +12,7 @@ import { getApiUrl } from '../utils/basePath'
 
 const props = withDefaults(defineProps<{ html: string; filePaths?: string[]; terminalAvailable?: boolean }>(), { filePaths: () => [], terminalAvailable: true })
 const emit = defineEmits<{
-  (event: 'open-file', path: string): void
+  (event: 'open-file', path: string, line?: string): void
   (event: 'show-terminal'): void
 }>()
 const copyStatus = ref('')
@@ -22,9 +22,10 @@ watch(() => props.html, () => { copyStatus.value = ''; contentVersion++ })
 
 async function handleClick(event: MouseEvent): Promise<void> {
   const target = event.target as HTMLElement
-  const path = target.closest<HTMLButtonElement>('button[data-open-file]')?.dataset.openFile
+  const fileButton = target.closest<HTMLButtonElement>('button[data-open-file]')
+  const path = fileButton?.dataset.openFile
   if (path && props.filePaths.includes(path)) {
-    emit('open-file', path)
+    emit('open-file', path, fileButton?.dataset.line)
     return
   }
   const diagnosticCopy = target.closest<HTMLButtonElement>('button[data-copy-diagnostics]')

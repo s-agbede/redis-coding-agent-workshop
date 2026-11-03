@@ -8,7 +8,7 @@
 
 ## Schedule
 
-Each section is an instructor demo followed by five minutes of hands-on. Attendees copy a ready-made `agent.py` from `solutions/steps/` instead of typing code.
+Each section is an instructor demo followed by five minutes of hands-on. All the code is already in `agent.py`: each section switches on one flag (`CAPTURE`, `RECALL`, `PLAYBOOK`) and attendees read the lines it turns on, linked from the lesson.
 
 | Elapsed | Section | Demo | Your turn |
 | --- | --- | --- | --- |
@@ -27,7 +27,7 @@ Extraction runs in the background while the instructor demonstrates recall, so a
 
 | Knowledge | Example | Home |
 | --- | --- | --- |
-| Project convention | "We target Python 3.12." | `AGENTS.md` |
+| Project convention | "Python with type hints." | `AGENTS.md` |
 | Personal preference | "I like Google-style docstrings." | Redis Agent Memory |
 | Team rule | How report rows are validated | Redis Agent Playbook |
 

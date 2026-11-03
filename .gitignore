@@ -20,3 +20,7 @@ output/
 .workshop/
 
 .workshop-memory/
+
+# Copies of docs/slides/agent-memory-workshop-slides.pdf made by scripts/publish_docs.py
+docker-workshop/docs/slides/*.pdf
+docker-workshop/frontend/public/slides/*.pdf

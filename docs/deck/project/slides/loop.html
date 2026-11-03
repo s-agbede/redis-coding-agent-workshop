@@ -1,0 +1,31 @@
+<section id="loop" data-transition="fade" style="background:#F5F3EE;color:#0B1B24;font-family:'Space Grotesk', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#B92E25">Recap · Part 1</p>
+<h2 style="font-size:72px;font-weight:600;line-height:1.1;letter-spacing:-1px">The agent loop in one picture</h2>
+</div>
+<div style="display:flex;align-items:center;gap:16px">
+<div style="flex:1;background:#FDFCFA;border:1px solid #DCD8CF;border-radius:16px;padding:32px;display:flex;flex-direction:column;gap:12px">
+<h3 style="font-size:44px;font-weight:600">You</h3>
+<p style="font-size:32px;color:#4A5560">Type a task</p>
+</div>
+<x-connector style="width:48px;color:#55636B;border-width:3px"></x-connector>
+<div style="flex:1;background:#FDFCFA;border:1px solid #DCD8CF;border-radius:16px;padding:32px;display:flex;flex-direction:column;gap:12px">
+<h3 style="font-size:44px;font-weight:600">Your app</h3>
+<p style="font-size:32px;color:#4A5560">Builds the request</p>
+</div>
+<x-connector style="width:48px;color:#55636B;border-width:3px"></x-connector>
+<div style="flex:1;background:#FDFCFA;border:1px solid #DCD8CF;border-radius:16px;padding:32px;display:flex;flex-direction:column;gap:12px">
+<h3 style="font-size:44px;font-weight:600">Model</h3>
+<p style="font-size:32px;color:#4A5560">Answers, or asks for a tool</p>
+</div>
+<x-connector style="width:48px;color:#55636B;border-width:3px"></x-connector>
+<div style="flex:1;background:#FDFCFA;border:1px solid #DCD8CF;border-radius:16px;padding:32px;display:flex;flex-direction:column;gap:12px">
+<h3 style="font-size:44px;font-weight:600">Python tool</h3>
+<p style="font-size:32px;color:#4A5560">Runs it; the result goes back</p>
+</div>
+</div>
+<p style="font-size:32px;color:#0B1B24;background:#E9E5DC;padding:24px 32px;border-radius:12px">The tool result goes into the next request. The loop repeats until the model answers.</p>
+<div style="flex:1"></div>
+<p style="font-size:44px;font-weight:600;color:#0B1B24">The model never touches your files. Your code does.</p>
+<aside>Quick recap of Part 1, about a minute. The model only ever asks for a tool. Our Python code runs it and sends the result back in the next request. If someone missed Part 1, this one picture is all they need.</aside>
+</section>

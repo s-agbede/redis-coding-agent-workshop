@@ -10,9 +10,31 @@ LESSONS = (
     '01-recap.md', '02-forgetting.md', '03-capture.md',
     '04-recall.md', '05-playbook.md', '06-verify.md',
 )
-# The presenter deck is a separate Slides artifact (see WORKSHOP.md); lessons carry no
-# in-guide decks. Map a lesson to a docs/slides/ file here to show one beside it again.
-SLIDES: dict[str, str] = {}
+# Each lesson shows its section of the presenter deck: docs/slides/<lesson>.md holds the slide images,
+# rendered from docs/deck by scripts/render_slides.py.
+SLIDES = {lesson: lesson for lesson in LESSONS}
+
+
+# Named places in agent.py that lessons link to as `agent.py:<name>`; each resolves to the first line
+# containing its marker, so the links stay right when agent.py changes.
+AGENT_ANCHORS = {
+    'loop': 'def run_agent(',
+    'flags': 'CAPTURE = ',
+    'handle': 'def handle(',
+    'capture': '# Section 3: record',
+    'recall': '# Section 4: search',
+    'playbook': '# Section 5: the team',
+    'request': '# Build the request',
+    'answer': '# Section 3 again',
+}
+
+
+def agent_line_links(text: str, agent_source: str) -> str:
+    lines = agent_source.splitlines()
+    def line_of(name: str) -> str:
+        marker = AGENT_ANCHORS[name]
+        return str(next(number for number, line in enumerate(lines, start=1) if marker in line))
+    return re.sub(r'`agent\.py:([a-z]+)`', lambda match: f'`agent.py:{line_of(match[1])}`', text)
 
 
 def lesson_links(text: str, source: str) -> str:
@@ -65,6 +87,7 @@ def published_files(root: Path) -> dict[Path, bytes]:
         deck = SLIDES.get(name)
         slide_metadata = f'slides: /slides/{deck}\n' if deck and (docs / 'slides' / deck).is_file() else ''
         frontmatter = f'---\ntitle: {title}\neditorFile: {editor}\n{slide_metadata}---\n'
+        body = agent_line_links(body, (root / 'agent.py').read_text())
         outputs[public / 'build-steps' / name] = (frontmatter + lesson_links(body.lstrip('\n'), f'docs/tasks/{name}')).encode()
         manifest.extend((f'  - file: {name}', f'    title: {title}'))
     outputs[public / 'build-steps/manifest.yaml'] = ('\n'.join(manifest) + '\n').encode()

@@ -45,3 +45,12 @@ test('slide failure leaves a clear retry path', async () => {
   assert.match(textOf(page.root), /Recovered/)
   page.unmount()
 })
+test('the whole deck can be downloaded as a PDF', async () => {
+  globalThis.fetch = async () => new Response('# First')
+  const page = await mount(Slides, { src: '/slides/01-recap.md' })
+  const link = findAll(page.root, el => el.type === 'a' && /Download slides/.test(el.text))[0]
+  assert.ok(link)
+  assert.equal(link.props.href, '/guide/slides/agent-memory-workshop-slides.pdf')
+  assert.equal(link.props.download, 'agent-memory-workshop-slides.pdf')
+  page.unmount()
+})

@@ -21,7 +21,8 @@ from redis_agent_memory import AgentMemory
 from redis_agent_playbook import Playbook
 
 from playbook import PlaybookStore
-from runtime import Workshop
+import completion
+from runtime import COMMANDS, Workshop
 
 
 def memory_store_id() -> str:
@@ -58,7 +59,7 @@ def main() -> int:
         parser.error('Cannot load the selected learner agent')
     learner = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(learner)
-    required = ('CAPTURE_ENABLED', 'RECALL_ENABLED', 'PLAYBOOK_ENABLED')
+    required = ('CAPTURE', 'RECALL', 'PLAYBOOK', 'handle')
     if not all(hasattr(learner, name) for name in required):
         parser.error('This agent.py is from an older workshop. Back it up and copy the starter agent.py.')
     with ExitStack() as stack:
@@ -86,9 +87,11 @@ def main() -> int:
         app = Workshop(learner, client, memory, playbook, owner, args.project, args.output)
         print('Coding agent with memory. /help lists commands.')
         app.command('/status')
+        commands = completion.connect(COMMANDS)
+        read = completion.prompt_reader(commands)
         while True:
             try:
-                prompt = input('You > ').strip()
+                prompt = read('You > ').strip()
             except (EOFError, KeyboardInterrupt):
                 break
             if prompt.lower() in ('exit','quit'):
@@ -98,6 +101,7 @@ def main() -> int:
             try:
                 if prompt.startswith('/'):
                     app.command(prompt)
+                    commands.used(prompt.split()[0])
                 else:
                     app.turn(prompt)
             except (ValueError, NotImplementedError, FileNotFoundError) as error:

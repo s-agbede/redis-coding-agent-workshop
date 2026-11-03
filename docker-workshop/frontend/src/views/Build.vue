@@ -150,7 +150,7 @@ export default {
         this.fileListError = 'Could not load workspace files. You can still read the lessons.'
       }
     },
-    openFile(path) {
+    openFile(path, line) {
       if (!this.terminalAvailable) {
         this.navigationError = 'Open the workbench using the link above, then use its Code panel to edit files in VS Code.'
         return false
@@ -161,7 +161,7 @@ export default {
         return false
       }
       this.navigationError = ''
-      window.parent.postMessage({ type: 'open-workshop-file', path }, window.location.origin)
+      window.parent.postMessage({ type: 'open-workshop-file', path, ...(line ? { line } : {}) }, window.location.origin)
       return true
     },
     navigateToPhase(step) {

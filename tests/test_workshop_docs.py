@@ -44,3 +44,19 @@ def test_published_outputs_match_canonical_sources():
 def test_lessons_carry_no_unfinished_placeholders():
     for name in LESSONS:
         assert 'placeholder' not in (ROOT/'docs/tasks'/name).read_text().lower(), name
+
+
+def test_every_lesson_has_slides_whose_images_exist():
+    for name in LESSONS:
+        deck = (ROOT/'docs/slides'/name).read_text()
+        images = re.findall(r'!\[[^\]]+\]\((/images/[^)]+)\)', deck)
+        assert images, name
+        for image in images:
+            assert (ROOT/'docs'/image.lstrip('/')).is_file(), (name, image)
+
+
+def test_lesson_links_into_agent_py_name_real_places():
+    from scripts.publish_docs import AGENT_ANCHORS
+    for name in LESSONS:
+        for anchor in re.findall(r'`agent\.py:([a-z]+)`', (ROOT/'docs/tasks'/name).read_text()):
+            assert anchor in AGENT_ANCHORS, (name, anchor)

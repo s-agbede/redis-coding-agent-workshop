@@ -50,7 +50,7 @@ def test_changed_skill_becomes_the_next_version_of_the_same_entry(tmp_path):
 
 def test_attendees_retrieve_the_instructor_skill_and_cannot_publish(tmp_path):
     client = Mock()
-    client.search_skills.return_value = NS(matches=[NS(entry_id='ent_other', version=4), NS(entry_id='ent_team', version=2)])
+    client.search_skills.return_value = NS(matches=[NS(entry_id='ent_other', version=4, score=0.9), NS(entry_id='ent_team', version=2, score=0.8)])
     client.get_skill_version.return_value = version_content('Use Decimal for amounts.')
     store = PlaybookStore(client, tmp_path / 'publication.json', skill_id='ent_team')
     skill = store.retrieve('validate report rows')
@@ -62,10 +62,19 @@ def test_attendees_retrieve_the_instructor_skill_and_cannot_publish(tmp_path):
 
 def test_unrelated_task_gets_no_team_skill(tmp_path):
     client = Mock()
-    client.search_skills.return_value = NS(matches=[NS(entry_id='ent_other', version=1)])
+    client.search_skills.return_value = NS(matches=[NS(entry_id='ent_other', version=1, score=0.9)])
     assert PlaybookStore(client, tmp_path / 'p.json', skill_id='ent_team').retrieve('write a haiku') is None
 
 
 def test_retrieval_without_any_skill_names_the_setting(tmp_path):
     with pytest.raises(ValueError, match='PLAYBOOK_SKILL_ID'):
         PlaybookStore(Mock(), tmp_path / 'p.json').retrieve('validate report rows')
+
+
+def test_a_skill_below_the_relevance_threshold_is_not_used(tmp_path):
+    client = Mock()
+    client.search_skills.return_value = NS(matches=[NS(entry_id='ent_team', version=3, score=0.57)])
+    store = PlaybookStore(client, tmp_path / 'p.json', skill_id='ent_team')
+    assert store.retrieve('write a fizzbuzz function', min_score=0.7) is None
+    client.get_skill_version.return_value = version_content('Use Decimal for amounts.')
+    assert store.retrieve('write a fizzbuzz function') is not None

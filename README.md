@@ -11,7 +11,7 @@ uv sync --group iris
 uv run --group iris python main.py
 ```
 
-Type a task, or `/help` for commands. Learners edit `agent.py`; the agent works in `project/`.
+Type a task, or `/help` for commands; typing `/` shows suggestions as you type, from Redis autocomplete (start the workshop's Redis with `docker compose up -d redis`). Learners edit `agent.py`; the agent works in `project/`.
 
 ## Browser workshop
 
@@ -23,10 +23,11 @@ Open http://localhost:8080 for the instructions, editor and terminal side by sid
 
 ## What's here
 
-- `agent.py`: the learner's agent. `main.py`, `runtime.py`, `playbook.py`, `tools.py`, `ui.py` and `context.py` are the supplied runtime.
+- `agent.py`: the learner's agent. Part 1's loop, plus `handle`, which does one task from start to finish; each section switches on one of its flags (`CAPTURE`, `RECALL`, `PLAYBOOK`). `main.py`, `runtime.py`, `playbook.py`, `tools.py`, `ui.py` and `context.py` are the supplied runtime.
 - `project/`: the small report project the agent works in, with its tests.
 - `skills/report-validation/`: the team skill published to Playbook.
-- `solutions/steps/`: ready-made `agent.py` for each section; `solutions/validator.py` is a reference answer.
+- `solutions/validator.py`: a reference answer for the final task.
 - `agent-memory/`: the Agent Memory inspector panel, and setup for self-hosting.
+- `docs/deck/`: the presenter deck's source (the Claude Slides artifact). `python3 scripts/render_slides.py` renders it to `docs/images/slides/`, which each lesson shows through `docs/slides/<lesson>.md`.
 - `docs/tasks/`: the lessons. After editing them, run `uv run python scripts/publish_docs.py` to refresh the browser copies.
 - `tests/`: tests for the workshop runtime (`uv run --group iris pytest`).

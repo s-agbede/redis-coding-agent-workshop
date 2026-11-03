@@ -1,0 +1,19 @@
+<section id="skill-code" data-transition="fade" style="background:#F5F3EE;color:#0B1B24;font-family:'Space Grotesk', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#2457B8">04 · Retrieve</p>
+<h2 style="font-size:72px;font-weight:600;line-height:1.1;letter-spacing:-1px">Use the procedure only when it fits the task</h2>
+</div>
+<div style="display:flex;gap:48px">
+<div style="width:900px;background:#0B1B24;border-radius:16px;padding:40px">
+<p style="font-family:'JetBrains Mono', 'Courier New', monospace;font-size:24px;line-height:1.5;color:#E6EDF0"><span style="color:#FFD7A8">SKILL_MIN_SCORE</span> = 0.7<br><br><span style="color:#FF8A7A">if</span> <span style="color:#FFD7A8">PLAYBOOK</span>:<br>&#160;&#160;&#160;&#160;skill = services.playbook.<span style="color:#FFD7A8">retrieve</span>(<br>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;task, min_score=<span style="color:#FFD7A8">SKILL_MIN_SCORE</span>,<br>&#160;&#160;&#160;&#160;)</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:28px">
+<p style="font-size:24px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#2457B8">How well report-validation fits</p>
+<p style="font-size:28px;background:#FDFCFA;border:1px solid #DCD8CF;border-left:12px solid #8A9BA4;border-radius:12px;padding:16px 24px">“Write a FizzBuzz function.” · 0.58 · not used</p>
+<p style="font-size:28px;background:#FDFCFA;border:1px solid #DCD8CF;border-left:12px solid #8A9BA4;border-radius:12px;padding:16px 24px">“…a URL slug function.” · 0.55 · not used</p>
+<p style="font-size:28px;font-weight:600;background:#FDFCFA;border:3px solid #2457B8;border-left:12px solid #2457B8;border-radius:12px;padding:16px 24px">“What are our rules for validating report rows?” · 0.91 · used</p>
+</div>
+</div>
+<p style="font-size:28px;color:#4A5560">Search always returns its closest skills. The threshold keeps the team procedure out of tasks it has nothing to do with.</p>
+<aside>Publishing doesn’t put the skill in the request; retrieval does. Set PLAYBOOK = True and open the Section 5 step. Ask for FizzBuzz: the terminal says no team procedure. Ask about the rules for validating report rows: it retrieves report-validation, and the name and version go into the request.</aside>
+</section>

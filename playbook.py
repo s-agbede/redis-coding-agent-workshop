@@ -58,11 +58,11 @@ class PlaybookStore:
             raise ValueError('No team skill yet. Set PLAYBOOK_SKILL_ID, or publish it with /publish-skill.')
         return json.loads(self.receipt_path.read_text())['entry_id']
 
-    def retrieve(self, query: str) -> PublishedSkill | None:
-        """Search the Playbook for this task; return the team skill only if it is relevant."""
+    def retrieve(self, query: str, min_score: float = 0.0) -> PublishedSkill | None:
+        """Search the Playbook for this task; return the team skill if it scores at least min_score."""
         entry_id = self.entry_id()
         matches = self.client.search_skills(query=query, limit=20).matches
-        match = next((item for item in matches if item.entry_id == entry_id), None)
+        match = next((item for item in matches if item.entry_id == entry_id and (item.score or 0) >= min_score), None)
         if match is None:
             return None
         content = self.client.get_skill_version(skill_id=entry_id, version=match.version).content.payload.skill

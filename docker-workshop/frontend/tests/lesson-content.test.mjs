@@ -117,3 +117,11 @@ test('origin diagnostics keep only bounded address fields', async () => {
   assert.equal(malformed.diagnostics.backend_origin, null)
   assert.equal(malformed.diagnostics.browser_origin.length, 512)
 })
+
+test('a file reference with a line number opens the editor at that line', () => {
+  const html = renderMarkdown('See `agent.py:100` and `agent.py`.')
+  const result = lessonContent.withFileButtons(html, ['agent.py'])
+  assert.ok(result.includes('data-open-file="agent.py" data-line="100"'))
+  assert.ok(result.includes('aria-label="Open agent.py at line 100 in editor"'))
+  assert.equal((result.match(/data-open-file="agent.py"/g) || []).length, 2)
+})

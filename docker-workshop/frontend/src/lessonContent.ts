@@ -52,9 +52,9 @@ export function withFileButtons(html: string, filePaths: readonly string[]): str
     /^[a-zA-Z0-9_.-]+(?:\/[a-zA-Z0-9_.-]+)*$/.test(path) &&
     path.split('/').every(part => part !== '.' && part !== '..')
   ))
-  return html.replace(/<pre\b[^>]*>[\s\S]*?<\/pre>|<a\b[^>]*>[\s\S]*?<\/a>|<button\b[^>]*>[\s\S]*?<\/button>|<(code|strong)>([a-zA-Z0-9_./-]+)<\/\1>/g,
-    (original: string, tag?: string, path?: string): string => tag && path && paths.has(path)
-      ? `<button type="button" class="lesson-file" data-open-file="${path}" aria-label="Open ${path} in editor" title="Open ${path} in editor">${original}</button>`
+  return html.replace(/<pre\b[^>]*>[\s\S]*?<\/pre>|<a\b[^>]*>[\s\S]*?<\/a>|<button\b[^>]*>[\s\S]*?<\/button>|<(code|strong)>([a-zA-Z0-9_./-]+?)(?::([1-9][0-9]*))?<\/\1>/g,
+    (original: string, tag?: string, path?: string, line?: string): string => tag && path && paths.has(path)
+      ? `<button type="button" class="lesson-file" data-open-file="${path}"${line ? ` data-line="${line}"` : ''} aria-label="Open ${path}${line ? ` at line ${line}` : ''} in editor" title="Open ${path}${line ? ` at line ${line}` : ''} in editor">${original}</button>`
       : original)
 }
 
