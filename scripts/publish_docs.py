@@ -104,8 +104,13 @@ def main() -> int:
     args = parser.parse_args()
     outputs = published_files(ROOT)
     changed = 0
-    for directory in (ROOT / 'docker-workshop/docs', ROOT / 'docker-workshop/frontend/public/build-steps', ROOT / 'docker-workshop/frontend/public/slides'):
-        for obsolete in sorted(directory.rglob('*.md')):
+    # Everything in these folders is generated, so anything the sources no longer produce is removed.
+    public = ROOT / 'docker-workshop/frontend/public'
+    docs = ROOT / 'docker-workshop/docs'
+    generated = [docs / 'tasks', docs / 'slides', docs / 'images/slides'] + [
+        public / name for name in ('build-steps', 'slides', 'images/slides', 'skills', 'solutions', 'project')]
+    for directory in generated:
+        for obsolete in sorted(path for path in directory.rglob('*') if path.is_file()):
             if obsolete not in outputs:
                 changed += 1
                 print(f"{'Obsolete' if args.check else 'Removed'}: {obsolete.relative_to(ROOT)}")

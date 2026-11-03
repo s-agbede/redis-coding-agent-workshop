@@ -1,9 +1,7 @@
 """Exercise the progressive learner file without replacing its normal runner."""
-import ast
 import importlib.util
 from pathlib import Path
 
-import pytest
 
 from tests.fakes import FakeClient, text, tool_turn
 

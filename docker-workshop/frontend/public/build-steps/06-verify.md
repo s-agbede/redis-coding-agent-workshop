@@ -27,10 +27,33 @@ Then `/verify` runs the tests yourself. The agent saying "tests pass" is a claim
 
 ## Your turn (5 minutes)
 
-1. `/new-session`, then ask for the validator as above. Approve the test run when asked.
-2. `/view-context`. **Look for:** all three sources.
-3. `/verify`. **Look for:** "Tests passed."
-4. Open `project/validator.py`. Find one rule that came from the team procedure (`Decimal`? the error format?) and check for your Google-style docstring.
+**1.** Start fresh and give the agent the real task. Approve the test run when it asks:
+
+```text
+/new-session
+```
+
+```text
+Implement validate_report in validator.py and make the tests pass.
+```
+
+**2.** See where each piece of knowledge came from:
+
+```text
+/view-context
+```
+
+**Look for:** all three sources.
+
+**3.** Check the work yourself:
+
+```text
+/verify
+```
+
+**Look for:** "Tests passed."
+
+**4.** Open `project/validator.py`. Find one rule that came from the team procedure (`Decimal`? the error format?) and check for your Google-style docstring.
 
 <details>
 <summary>Out of time?</summary>

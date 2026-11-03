@@ -112,21 +112,6 @@ LIST_SCHEMA = {
     }
 }
 
-PLAIN_READ_SCHEMA = {
-    "type": "function",
-    "function": {
-        "name": "read_file",
-        "description": "Read the complete UTF-8 text of a known local file. Use list_files to discover paths.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "path": {"type": "string"}
-            },
-            "required": ["path"]
-        }
-    }
-}
-
 PAGED_READ_SCHEMA = {
     "type": "function",
     "function": {

@@ -48,7 +48,11 @@
           <p v-if="fileListError" role="alert">{{ fileListError }} <button @click="loadGuideFiles">Retry file list</button></p>
           <!-- Current Step Content -->
           <div class="step-content">
-            <button v-if="currentStep.editorFile" class="open-file" @click="openFile(currentStep.editorFile)">Open {{ currentStep.editorFile }}</button>
+            <div class="step-actions">
+              <button v-if="currentStep.editorFile" class="open-file" @click="openFile(currentStep.editorFile)">Open {{ currentStep.editorFile }}</button>
+              <button v-if="terminalAvailable" class="reset-workshop" :disabled="resetting" @click="resetWorkshop">Reset workshop</button>
+            </div>
+            <p v-if="resetMessage" role="status" class="reset-message">{{ resetMessage }}</p>
             <h2 ref="stepHeading" tabindex="-1" class="step-title">{{ currentStep.title }}</h2>
             <LessonSlides v-if="currentStep.slides" :key="currentStep.file" :src="currentStep.slides" />
             <LessonContent class="step-description" :html="renderedContent" :file-paths="filePaths" :terminal-available="terminalAvailable" @open-file="openFile" @show-terminal="showTerminal" />
@@ -113,6 +117,8 @@ export default {
       navigationError: '',
       fileListError: '',
       filePaths: [],
+      resetting: false,
+      resetMessage: '',
       loadingSteps: true,
       stepsError: null
     }
@@ -148,6 +154,23 @@ export default {
         this.fileListError = ''
       } catch {
         this.fileListError = 'Could not load workspace files. You can still read the lessons.'
+      }
+    },
+    async resetWorkshop() {
+      // Back to the starting point: flags off, project as shipped, a new learner identity.
+      if (!window.confirm('Reset the workshop? agent.py and project/ go back to how they started, and you start as a new learner. Your current files are kept in a backup folder.')) return
+      this.resetting = true
+      this.resetMessage = ''
+      try {
+        const response = await fetch('/api/workspace/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+        const result = await response.json()
+        if (!response.ok) throw new Error(result.detail || `HTTP ${response.status}`)
+        this.resetMessage = `Workshop reset. In the terminal, type exit and start the agent again. Your previous files are in ${result.backup}.`
+        void this.loadGuideFiles()
+      } catch (error) {
+        this.resetMessage = `Could not reset the workshop: ${error.message}`
+      } finally {
+        this.resetting = false
       }
     },
     openFile(path, line) {
@@ -446,4 +469,7 @@ export default {
 }
 
 .open-file { margin-bottom: 1rem; padding: .5rem .75rem; border: 1px solid #7aa2f7; border-radius: 4px; background: #1e2030; color: #c0caf5; cursor: pointer; }
+.step-actions { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+.reset-workshop { margin-left: auto; }
+.reset-message { margin: .5rem 0; }
 </style>

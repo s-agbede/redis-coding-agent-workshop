@@ -8,6 +8,7 @@
       <div class="slide-modes">
         <a class="download" :href="deckUrl" :download="deckFile">Download slides (PDF)</a>
         <button ref="focusButton" type="button" :aria-pressed="focused" @click="toggleFocus">{{ focused ? 'Exit focus' : 'Focus mode' }}</button>
+        <button type="button" :aria-pressed="fullscreen" @click="toggleFullscreen">{{ fullscreen ? 'Exit full screen' : 'Full screen' }}</button>
       </div>
     </div>
     <p v-if="loading" role="status">Loading introduction…</p>
@@ -44,7 +45,7 @@ export default {
     deckFile: () => DECK_FILE,
     deckUrl: () => `${getBasePath()}/slides/${DECK_FILE}`
   },
-  data() { return { slides: [], index: 0, readMode: false, focused: false, loading: true, error: false, controller: null, blockedElements: [] } },
+  data() { return { slides: [], index: 0, readMode: false, focused: false, loading: true, error: false, controller: null, blockedElements: [], fullscreen: false } },
   methods: {
     render: markdownToHtml,
     async load() {
@@ -85,6 +86,16 @@ export default {
         element = element.parentElement
       }
     },
+    // Real browser full screen for presenting: arrow keys change slides, Escape leaves it.
+    async toggleFullscreen() {
+      if (document.fullscreenElement) { await document.exitFullscreen(); return }
+      this.readMode = false
+      await this.$refs.frame?.requestFullscreen?.()
+      this.$refs.frame?.focus?.()
+    },
+    onFullscreenChange() {
+      this.fullscreen = !!document.fullscreenElement && document.fullscreenElement === this.$refs.frame
+    },
     async toggleFocus() {
       this.focused = !this.focused
       await this.$nextTick()
@@ -111,8 +122,14 @@ export default {
       }
     }
   },
-  mounted() { void this.load() },
-  beforeUnmount() { this.controller?.abort(); this.restoreBackground() }
+  mounted() {
+    void this.load()
+    if (typeof document !== 'undefined') document.addEventListener?.('fullscreenchange', this.onFullscreenChange)
+  },
+  beforeUnmount() {
+    this.controller?.abort(); this.restoreBackground()
+    if (typeof document !== 'undefined') document.removeEventListener?.('fullscreenchange', this.onFullscreenChange)
+  }
 }
 </script>
 
@@ -138,4 +155,7 @@ button:focus-visible, a.download:focus-visible, .lesson-slides:focus-visible { o
 .is-focused .slide-body:has(img) { max-width: min(1600px, 96vw); }
 .is-focused .slide-body :deep(img) { max-height: 80vh; }
 .focus-hint { color: #a9bac8; font-size: .85rem; }
+.lesson-slides:fullscreen { display: flex; flex-direction: column; margin: 0; border: 0; border-radius: 0; padding: 1rem 2rem; background: #000; }
+.lesson-slides:fullscreen .slide-card { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; padding: 0; }
+.lesson-slides:fullscreen .slide-body :deep(img) { max-height: calc(100vh - 7rem); width: auto; max-width: 100%; margin: 0 auto; }
 </style>

@@ -5,7 +5,7 @@ from io import StringIO
 import pytest
 from rich.console import Console
 
-import main
+import main  # noqa: F401  (main.py must import cleanly)
 import ui
 import importlib.util
 from pathlib import Path

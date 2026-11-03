@@ -67,3 +67,10 @@ export async function copyCode(text: string, clipboard?: Pick<Clipboard, 'writeT
     return { ok: false, message: 'Copy failed. Select the code and copy it manually.' }
   }
 }
+
+/** Wrap each "Your turn" section, from its heading to the next h2 or "Next:" link, in a details element that starts open. */
+export function withCollapsibleYourTurn(html: string): string {
+  return html.replace(/<h2>(Your turn[^<]*)<\/h2>([\s\S]*?)(?=<h2[\s>]|<p>Next: |$)/g,
+    (_section: string, title: string, body: string): string =>
+      `<details class="your-turn" open><summary><h2>${title}</h2></summary>${body}</details>`)
+}

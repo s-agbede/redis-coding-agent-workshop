@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import * as lessonContent from '../src/lessonContent.ts'
-const { withCopyButtons, copyCode } = lessonContent
+const { withCopyButtons, copyCode, withCollapsibleYourTurn } = lessonContent
 import { renderMarkdown } from '../../vendor/workshop-front-end-components/src/content-renderer/markdown.js'
 
 test('shell blocks run in Terminal while source answers retain copy actions', () => {
@@ -124,4 +124,19 @@ test('a file reference with a line number opens the editor at that line', () => 
   assert.ok(result.includes('data-open-file="agent.py" data-line="100"'))
   assert.ok(result.includes('aria-label="Open agent.py at line 100 in editor"'))
   assert.equal((result.match(/data-open-file="agent.py"/g) || []).length, 2)
+})
+
+test('Your turn becomes a section you can collapse, open to start, ending at the next heading', () => {
+  const html = '<h2>Demo</h2><p>text</p><h2>Your turn (5 minutes)</h2><p><strong>1.</strong> Do it</p>' +
+    '<details><summary>Out of time?</summary><p>cp</p></details><h2>Three sources</h2><p>end</p>'
+  const result = withCollapsibleYourTurn(html)
+  assert.equal(result,
+    '<h2>Demo</h2><p>text</p><details class="your-turn" open><summary><h2>Your turn (5 minutes)</h2></summary>' +
+    '<p><strong>1.</strong> Do it</p><details><summary>Out of time?</summary><p>cp</p></details></details>' +
+    '<h2>Three sources</h2><p>end</p>')
+  assert.equal(withCollapsibleYourTurn('<h2>Your turn</h2><p>last</p>'),
+    '<details class="your-turn" open><summary><h2>Your turn</h2></summary><p>last</p></details>')
+  assert.equal(withCollapsibleYourTurn('<h2>Demo</h2><p>x</p>'), '<h2>Demo</h2><p>x</p>')
+  assert.equal(withCollapsibleYourTurn('<h2>Your turn</h2><p>do it</p><p>Next: <a href="/b">recall</a>.</p>'),
+    '<details class="your-turn" open><summary><h2>Your turn</h2></summary><p>do it</p></details><p>Next: <a href="/b">recall</a>.</p>')
 })

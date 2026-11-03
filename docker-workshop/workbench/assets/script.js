@@ -62,7 +62,7 @@ function buildPanels() {
           <i class="fa-solid fa-spinner"></i>
           <span>Connecting...</span>
         </div>
-        <iframe title="${config.sidebar.name}" name="${config.sidebar.id}"></iframe>
+        <iframe title="${config.sidebar.name}" name="${config.sidebar.id}" allow="fullscreen"></iframe>
       </div>
     `;
     main.appendChild(sidebar);

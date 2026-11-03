@@ -36,6 +36,32 @@
     }
   ],
   "longTermMemoryExclusions": {
-    "enabled": false
+    "enabled": true,
+    "builtInDetectors": {
+      "enabled": true,
+      "detectors": [
+        {
+          "id": "email",
+          "enabled": true,
+          "action": "redact"
+        }
+      ]
+    },
+    "customDetectors": {
+      "enabled": true,
+      "detectors": [
+        {
+          "name": "api-token",
+          "enabled": true,
+          "action": "drop",
+          "matcher": {
+            "kind": "regex",
+            "regex": {
+              "pattern": "\\b(?:ghp|sk)_[A-Za-z0-9]{16,}"
+            }
+          }
+        }
+      ]
+    }
   }
 }

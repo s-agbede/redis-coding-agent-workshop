@@ -31,14 +31,14 @@ def test_sessions_lists_stored_sessions_and_resume_restores_the_conversation(tmp
     memory = Mock()
     app = runtime.Workshop(LEARNER, Mock(), memory, None, 'owner', tmp_path, tmp_path / 'out')
     memory.list_sessions.return_value.items = ['old-session', app.state.session_id]
-    app.command('/sessions')
-    shown = capsys.readouterr().out
-    assert 'old-session' in shown and '(current)' in shown
-    memory.list_sessions.assert_called_once_with(filter_owner_id='owner')
     memory.get_session_memory.return_value.model_dump.return_value = {'events': [
         {'role': 'USER', 'actorId': 'owner', 'content': [{'text': 'I like Google-style docstrings.'}]},
         {'role': 'ASSISTANT', 'actorId': 'coding-assistant', 'content': [{'text': 'Noted.'}]},
     ]}
+    app.command('/sessions')
+    shown = capsys.readouterr().out
+    assert 'old-sess  I like Google-style docstrings.' in shown and '(current)' in shown
+    memory.list_sessions.assert_called_once_with(filter_owner_id='owner')
     app.command('/resume old-session')
     assert app.state.session_id == 'old-session'
     assert app.state.history == [
@@ -112,3 +112,61 @@ def test_memories_shows_short_ids_and_forget_deletes_by_id(tmp_path, capsys):
     assert 'Forgot' in capsys.readouterr().out
     with pytest.raises(ValueError, match='No memory'):
         app.command('/forget zzz')
+
+
+def session_not_found() -> Exception:
+    import httpx
+    from redis_agent_memory import errors
+    data = errors.NotFoundErrorResponseContentData.model_construct(title='Session Not Found', status=404)
+    return errors.NotFoundErrorResponseContent(data, httpx.Response(404, request=httpx.Request('GET', 'http://memory')))
+
+
+def test_events_explains_a_session_nothing_was_recorded_for(tmp_path, capsys):
+    memory = Mock()
+    memory.get_session_memory.side_effect = session_not_found()
+    app = runtime.Workshop(LEARNER, Mock(), memory, None, 'owner', tmp_path, tmp_path / 'out')
+    app.command('/events')
+    assert 'Nothing recorded for this session yet' in capsys.readouterr().out
+
+
+def test_resume_names_a_session_that_does_not_exist(tmp_path):
+    memory = Mock()
+    memory.list_sessions.return_value.items = ['missing-id']
+    memory.get_session_memory.side_effect = session_not_found()
+    app = runtime.Workshop(LEARNER, Mock(), memory, None, 'owner', tmp_path, tmp_path / 'out')
+    with pytest.raises(ValueError, match='No stored session missing-id'):
+        app.command('/resume missing-id')
+
+
+def stored_sessions(memory: Mock, sessions: dict[str, str]) -> None:
+    """Agent Memory with these sessions, each holding one user message."""
+    memory.list_sessions.return_value.items = list(sessions)
+    def session(session_id: str) -> Mock:
+        found = Mock()
+        found.model_dump.return_value = {'events': [
+            {'role': 'USER', 'actorId': 'owner', 'content': [{'text': sessions[session_id]}]}]}
+        return found
+    memory.get_session_memory.side_effect = lambda session_id: session(session_id)
+
+
+def test_sessions_are_numbered_and_labelled_by_their_first_message(tmp_path, capsys):
+    memory = Mock()
+    stored_sessions(memory, {'3f9a1c2e' + '0' * 24: 'Write a slug function', 'b6c0a46e' + '1' * 24: 'Show me FizzBuzz'})
+    app = runtime.Workshop(LEARNER, Mock(), memory, None, 'owner', tmp_path, tmp_path / 'out')
+    app.command('/sessions')
+    shown = capsys.readouterr().out
+    assert '1  3f9a1c2e  Write a slug function' in shown
+    assert '2  b6c0a46e  Show me FizzBuzz' in shown
+
+
+def test_resume_accepts_a_list_number_or_the_start_of_an_id(tmp_path):
+    memory = Mock()
+    first, second = '3f9a1c2e' + '0' * 24, 'b6c0a46e' + '1' * 24
+    stored_sessions(memory, {first: 'Write a slug function', second: 'Show me FizzBuzz'})
+    app = runtime.Workshop(LEARNER, Mock(), memory, None, 'owner', tmp_path, tmp_path / 'out')
+    app.command('/resume 2')
+    assert app.state.session_id == second
+    app.command('/resume 3f9a')
+    assert app.state.session_id == first
+    with pytest.raises(ValueError, match='No stored session 9'):
+        app.command('/resume 9')

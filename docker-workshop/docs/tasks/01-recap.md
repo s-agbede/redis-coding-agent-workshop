@@ -56,7 +56,7 @@ You'll see your owner ID, session ID, and which capabilities are on (all off for
 | --- | --- |
 | `/view-context` | Shows exactly what was sent to the model last |
 | `/new-session` | Starts a fresh conversation |
-| `/sessions`, `/resume <id>` | Lists your stored sessions and brings one back |
+| `/sessions`, `/resume <number>` | Lists your stored sessions, numbered, and brings one back |
 | `/events`, `/memories` | What Redis Agent Memory stored, and what it learned |
 | `/forget <id>` | Makes Redis Agent Memory forget one of your memories |
 | `/skills` | The team procedure from Redis Agent Playbook |

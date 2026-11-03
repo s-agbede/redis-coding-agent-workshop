@@ -12,7 +12,7 @@ from uuid import uuid4
 
 from openai import OpenAI
 from pydantic import BaseModel, ConfigDict, Field
-from redis_agent_memory import AgentMemory
+from redis_agent_memory import AgentMemory, errors
 
 import tools
 import ui
@@ -24,7 +24,7 @@ COMMANDS = {
     '/view-context': 'Exactly what was sent to the model last',
     '/new-session': 'Start a fresh conversation',
     '/sessions': 'Your stored sessions',
-    '/resume': 'Bring a stored session back: /resume <id>',
+    '/resume': 'Bring a stored session back: /resume <number>',
     '/events': 'What Agent Memory stored for this session',
     '/memories': 'What Agent Memory learned about you',
     '/forget': 'Forget one of your memories: /forget <id>',
@@ -34,7 +34,7 @@ COMMANDS = {
     '/help': 'List the commands',
 }
 HELP = (
-    '/status  /view-context  /new-session  /sessions  /resume <id>\n'
+    '/status  /view-context  /new-session  /sessions  /resume <number>\n'
     '/events  /memories  /forget <id>  /skills  /publish-skill (instructor)  /verify  /help  exit'
 )
 
@@ -184,10 +184,37 @@ class Workshop:
         else:
             ui.info(f'Resumed session {session_id}.')
 
-    def resume(self, session_id: str) -> None:
-        events = self.memory_client().get_session_memory(session_id=session_id).model_dump(
-            mode='json', by_alias=True,
-        )['events']
+    def session_events(self, session_id: str) -> list[dict[str, Any]] | None:
+        """The session's stored events, or None when Agent Memory has no such session.
+
+        Agent Memory creates a session with its first event, so a session that ran with
+        CAPTURE off does not exist there yet.
+        """
+        try:
+            session = self.memory_client().get_session_memory(session_id=session_id)
+        except errors.NotFoundErrorResponseContent:
+            return None
+        return session.model_dump(mode='json', by_alias=True)['events']
+
+    def stored_sessions(self) -> list[str]:
+        return list(self.memory_client().list_sessions(filter_owner_id=self.state.owner).items)
+
+    def find_session(self, reference: str) -> str:
+        """A stored session, by its number in /sessions or by the start of its ID."""
+        sessions = self.stored_sessions()
+        if reference.isdigit() and 1 <= int(reference) <= len(sessions):
+            return sessions[int(reference) - 1]
+        matches = [session_id for session_id in sessions if session_id.startswith(reference)]
+        if len(matches) == 1:
+            return matches[0]
+        problem = 'matches more than one session' if matches else 'not found'
+        raise ValueError(f'No stored session {reference} ({problem}). /sessions lists them; use its number.')
+
+    def resume(self, reference: str) -> None:
+        session_id = self.find_session(reference)
+        events = self.session_events(session_id)
+        if events is None:
+            raise ValueError(f'No stored session {reference}. /sessions lists the ones Agent Memory has.')
         history = [
             {'role': event['role'].lower(), 'content': ' '.join(part.get('text', '') for part in event['content'])}
             for event in events
@@ -204,14 +231,20 @@ class Workshop:
         elif name == '/new-session':
             self.new_session()
         elif name == '/sessions':
-            sessions = self.memory_client().list_sessions(filter_owner_id=self.state.owner).items
-            for session_id in sessions:
-                print(session_id + ('   (current)' if session_id == self.state.session_id else ''))
-            if not sessions:
+            sessions = self.stored_sessions()
+            for number, session_id in enumerate(sessions, start=1):
+                # Label each session by its first message, so you can tell them apart.
+                first = next((event for event in self.session_events(session_id) or [] if event['role'] == 'USER'), None)
+                label = ' '.join(part.get('text', '') for part in first['content'])[:60] if first else '(no messages)'
+                current = '   (current)' if session_id == self.state.session_id else ''
+                print(f'{number}  {session_id[:8]}  {label}{current}')
+            if sessions:
+                print('\n/resume <number> brings one back.')
+            else:
                 print('No stored sessions yet. Capture must be on for sessions to be stored.')
         elif name == '/resume':
             if not argument:
-                raise ValueError('Usage: /resume <session id>. /sessions lists them.')
+                raise ValueError('Usage: /resume <number>, from the list /sessions shows.')
             self.resume(argument.strip())
         elif name == '/view-context':
             if not self.state.last_request:
@@ -222,9 +255,10 @@ class Workshop:
                 for number, message in enumerate(self.state.last_request, start=1):
                     print(f'[{number}] {describe(message)}\n')
         elif name == '/events':
-            events = self.memory_client().get_session_memory(session_id=self.state.session_id).model_dump(
-                mode='json', by_alias=True,
-            )['events']
+            events = self.session_events(self.state.session_id)
+            if events is None:
+                print('Nothing recorded for this session yet. Turn on CAPTURE (Section 3) and send a message.')
+                return
             for event in events:
                 text = ' '.join(part.get('text', '') for part in event['content'])
                 print(f'{event["role"]} ({event.get("actorId", "?")}): {text[:150]}')

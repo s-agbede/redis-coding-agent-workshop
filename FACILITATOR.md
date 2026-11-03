@@ -51,9 +51,9 @@ Your `agent.py` follows the same flags as the room: each section switches one on
 
 - **Recap.** Model asks, Python runs the tool, the result goes back. Ask today's question.
 - **The amnesiac.** "By the way, I like Google-style docstrings on my functions." Ask for the slug function; it gets the docstring. `/new-session`, ask for the same slug function, `/view-context`: the preference is gone. Have the agent add it to `AGENTS.md`, start a new session, and ask again: it works every time. Then walk through what that costs (manual, applies to everyone, only grows, never expires) and name the three jobs: extraction, lifecycle, retrieval. Have the agent take the line back out.
-- **Capture.** Name Redis Agent Memory. Open Store settings in the Agent Memory panel first: retention, extraction, and the `coding_preference` prompt. Set `CAPTURE = True` and walk through the two capture steps in `handle`. Restart, restate the preference, `/events`. Then `/new-session`, `/sessions`, `/resume`: the whole conversation is back. Open the Agent Memory panel to show the same session in the service. Ask: do we want every old conversation in every request?
-- **Recall.** Open with `/memories`; the preference has been extracted. Set `RECALL = True`; walk through the search (owner and type, not session) and how the request adds what was found. Fresh session, the de-duplication function, `/view-context`.
-- **Playbook.** Personal to organisational. Show `SKILL.md`, run `/publish-skill`, then `/skills`. Set `PLAYBOOK = True`; show FizzBuzz getting no team procedure and the report-rules question getting it (the `SKILL_MIN_SCORE` threshold). Optional: add a rule to `SKILL.md` and publish again for version 2, then `git checkout skills/` afterwards.
+- **Capture.** Name Redis Agent Memory. Open Store settings in the Agent Memory panel first: retention, extraction, the `coding_preference` prompt, and the sensitive-data exclusions (email redacted, API tokens dropped). Set `CAPTURE = True` and walk through the two capture steps in `handle`. Restart, restate the preference, add "In test fixtures, use my email jane.doe@example.com as the sample address.", then `/events`. Then `/new-session`, `/sessions`, `/resume 1`: the whole conversation is back. Open the Agent Memory panel to show the same session in the service. Ask: do we want every old conversation in every request?
+- **Recall.** Open with `/memories`; the preference has been extracted. Set `RECALL = True`; walk through the search (owner and type, not session) and how the request adds what was found. Fresh session, the de-duplication function, `/view-context`. Point out the fixture memory with `[REDACTED]` in `/memories` and the raw email still in `/events`: exclusions protect long-term memory, not the session. Say "Actually, I've switched to NumPy-style docstrings.", explain retrieval while extraction runs, then `/memories`: one docstring memory, updated. Forget it in the panel; ask again: *Recalled: nothing*. Restate Google-style for the finale.
+- **Playbook.** Personal to organisational. Show `SKILL.md`, run `/publish-skill`, then `/skills`. Set `PLAYBOOK = True`; show FizzBuzz getting no team procedure and the report-rules question getting it (the `SKILL_MIN_SCORE` threshold). Optional: add a rule to `SKILL.md` and publish again for version 2, then `git checkout skills/` afterwards. Then promotion: Iris console (http://localhost:18080) → Playbook → **Proposals**. Open the fixture-data proposal (everyone asked it at the end of section 4) and show its evidence. Rewrite the answer to the approved one ("No. Test fixtures must use synthetic data… Real customer data never goes into the repository, even masked."), **Accept as draft FAQ**, then publish it from **Entries**. The room asks it in their own words and sees *Team answer: …*.
 - **Verify.** Fresh session: "Implement validate_report in validator.py and make the tests pass." Approve the test run. `/view-context` for the three sources, then `/verify`.
 - **Discussion.** Below.
 
@@ -62,11 +62,32 @@ Your `agent.py` follows the same flags as the room: each section switches one on
 | Question | Point to |
 | --- | --- |
 | Who can read a memory? | Recall filters by owner, but isolation comes from how stores, keys and namespaces are provisioned. |
-| Can we correct or delete what it learned? | Redis Agent Memory has update and delete operations for long-term memories and sessions. |
-| What about sensitive data? | Extraction learns from what you capture, so decide what to capture. |
+| Can we correct or delete what it learned? | Say so in conversation and extraction updates the old memory; Forget deletes one; retention expires the rest. |
+| What about sensitive data? | Exclusions redact or drop matches before anything reaches long-term memory (built-in detectors, your own regex, or a plain-language rule). Session events keep the raw text until they expire, so decide what you capture at all. |
+| Who decides what becomes a team answer? | Extraction only proposes. A person edits and accepts a proposal, and publishing is a separate step; until then no agent sees it. |
 | Who approves a procedure? | Playbook separates creating a version from publishing it; only the publisher needs write access. |
 | How do changes roll out? | Agents retrieve the current published version, and its name and version appear in the request. |
-| What can we configure? | With self-hosting, the Agent Memory panel's Store settings tab shows retention, extraction cadence, summarization and sensitive-data exclusions. |
+| What can we configure? | The Agent Memory panel's Store settings tab shows retention, extraction cadence, summarization and sensitive-data exclusions. |
+
+## Before the session: Playbook promotion
+
+Point the Playbook's FAQ extraction at the workshop store, with a one-minute idle window, so proposals appear during the session:
+
+```bash
+uv run python scripts/iris_preview_extraction.py --idle-seconds 60
+```
+
+It's idempotent. In **Proposals**, dismiss any left over from rehearsals so the room sees a clean inbox.
+
+## Reset the workshop state
+
+To rehearse again from the start (flags off, `project/` as shipped, a new learner identity), press **Reset workshop** at the top of any lesson in the guide. Attendees can use it too. From a host terminal, the same reset is:
+
+```bash
+python3 scripts/prepare_workspace.py --reset . .workshop-memory
+```
+
+Your previous `agent.py`, `project/` and identity move to `.workshop-memory/.backups/`. Earlier memories stay in Redis Agent Memory under the old owner ID and expire with the store's retention. Type `exit` in the terminal and start the agent again; no container restart is needed.
 
 ## If something goes wrong
 

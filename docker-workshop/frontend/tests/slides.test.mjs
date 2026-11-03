@@ -54,3 +54,21 @@ test('the whole deck can be downloaded as a PDF', async () => {
   assert.equal(link.props.download, 'agent-memory-workshop-slides.pdf')
   page.unmount()
 })
+test('slides go full screen on the slide frame and the button tracks the state', async () => {
+  globalThis.fetch = async () => new Response('# First\n---\n# Second')
+  const page = await mount(Slides, { src: '/slides/01-recap.md' })
+  globalThis.document ??= {}
+  let requested = 0
+  page.vm.$refs.frame.requestFullscreen = async () => { requested++ }
+  globalThis.document.fullscreenElement = null
+  await button(page, 'Full screen').props.onClick(); await flush()
+  assert.equal(requested, 1)
+  globalThis.document.fullscreenElement = page.vm.$refs.frame
+  page.vm.onFullscreenChange(); await flush()
+  assert.ok(button(page, 'Exit full screen'))
+  let exited = 0
+  globalThis.document.exitFullscreen = async () => { exited++ }
+  await button(page, 'Exit full screen').props.onClick(); await flush()
+  assert.equal(exited, 1)
+  page.unmount()
+})

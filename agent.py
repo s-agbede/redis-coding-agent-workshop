@@ -17,7 +17,7 @@ from redis_agent_memory import models
 
 import ui
 from tools import (
-    LIST_SCHEMA, PAGED_READ_SCHEMA, PLAIN_READ_SCHEMA,
+    LIST_SCHEMA, PAGED_READ_SCHEMA,
     WRITE_FILE_SCHEMA, STR_REPLACE_SCHEMA, RUN_BASH_SCHEMA,
     file_excerpt, list_files, write_file, str_replace, run_bash,
 )
@@ -87,14 +87,15 @@ REGISTRY = {
 # Each section switches one of these on. Save, type exit, and start the agent again.
 CAPTURE = False   # Section 3: Redis Agent Memory records the conversation
 RECALL = False    # Section 4: bring back what it learned about you
-PLAYBOOK = False  # Section 5: follow the team's procedure from Redis Agent Playbook
+PLAYBOOK = False  # Section 5: the team's procedure and approved answers from Redis Agent Playbook
 
 SYSTEM = (
     "You are a coding assistant working in this project. Use your tools when a task needs the project's files. "
     "Answer in Markdown, with code in fenced blocks tagged with its language."
 )
-# Playbook search always returns its closest skills; only use one that is clearly about this task.
+# Playbook search always returns its closest entries; only use ones clearly about this task.
 SKILL_MIN_SCORE = 0.7
+FAQ_MIN_SCORE = 0.75
 
 
 def handle(task: str, session: Any, services: Any) -> str | None:
@@ -118,11 +119,15 @@ def handle(task: str, session: Any, services: Any) -> str | None:
         preferences = [item.text for item in found.items]
         ui.info("Recalled: " + ("; ".join(preferences) or "nothing"))
 
-    # Section 5: the team's procedure, but only if it is relevant to this task.
+    # Section 5: the team's procedure and approved answers, but only what is relevant to this task.
     skill = None
+    answers = []
     if PLAYBOOK:
         skill = services.playbook.retrieve(task, min_score=SKILL_MIN_SCORE)
         ui.info(f"Team procedure: {skill.name}, version {skill.version}" if skill else "Team procedure: none for this task")
+        answers = services.playbook.answers(task, min_score=FAQ_MIN_SCORE)
+        if answers:
+            ui.info("Team answer: " + "; ".join(a.question for a in answers))
 
     # Build the request: instructions, what was recalled, the conversation so far, then the task.
     messages: list[Any] = [{"role": "system", "content": SYSTEM + "\n\nProject instructions (AGENTS.md):\n" + session.instructions}]
@@ -131,6 +136,8 @@ def handle(task: str, session: Any, services: Any) -> str | None:
         recalled.append("What you know about this user's preferences:\n" + "\n".join(f"- {p}" for p in preferences))
     if skill:
         recalled.append(f"Team procedure from Redis Agent Playbook ({skill.name}, version {skill.version}):\n{skill.instructions}")
+    if answers:
+        recalled.append("Approved team answers from Redis Agent Playbook:\n" + "\n".join(f"- Q: {a.question}\n  A: {a.answer}" for a in answers))
     if recalled:
         messages.append({"role": "system", "content": "\n\n".join(recalled)})
     conversation_starts = len(messages)

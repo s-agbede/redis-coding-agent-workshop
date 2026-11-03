@@ -325,3 +325,8 @@ test('memory workbench shows Code and Terminal, with Agent Memory and Redis Insi
   assert.deepEqual(Array.from(vm.runInContext('config.panels.filter(panel => panel.visible).map(panel => panel.id)', context)), ['vscode', 'terminal']);
   assert.equal(vm.runInContext('config.title', context), 'Give your coding agent memory');
 });
+
+test('the Instructions frame may show slides full screen', () => {
+  const source = require('node:fs').readFileSync(require('node:path').join(__dirname, '../assets/script.js'), 'utf8');
+  assert.match(source, /<iframe title="\$\{config\.sidebar\.name\}" name="\$\{config\.sidebar\.id\}" allow="fullscreen"><\/iframe>/);
+});

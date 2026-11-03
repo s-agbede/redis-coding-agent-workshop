@@ -53,9 +53,38 @@ Having to remember that step is the "nothing expires" problem in miniature.
 
 ## Your turn (5 minutes)
 
-1. Tell the agent your docstring preference, then ask for the slug function.
-2. `/new-session` and ask for the slug function again. **Look for:** no Google-style docstring, and nothing about docstrings in `/view-context`.
-3. Ask the agent to add the preference to `AGENTS.md`, `/new-session`, and ask for the slug function once more. **Look for:** Google-style again, and the rule in the first message of `/view-context`.
-4. Ask the agent to remove the docstring line from `AGENTS.md`.
+**1.** Tell the agent your preference, then ask for the slug function:
+
+```text
+By the way, I like Google-style docstrings on my functions.
+```
+
+```text
+Show me a quick function that turns a title into a URL slug.
+```
+
+**2.** Start a fresh conversation and ask for the slug function again (the same prompt as above):
+
+```text
+/new-session
+```
+
+**Look for:** no Google-style docstring, and nothing about docstrings in `/view-context`.
+
+**3.** Write it down, start fresh, and ask for the slug function once more:
+
+```text
+Add to AGENTS.md that I like Google-style docstrings on my functions.
+```
+
+**Look for:** after `/new-session`, Google-style again, and the rule in the first message of `/view-context`.
+
+**4.** Take it back out, so later sections get it from memory, not the file:
+
+```text
+Remove the docstring line from AGENTS.md.
+```
+
+**Try your own:** any preference you'd want an agent to keep, such as "I prefer pathlib over os.path".
 
 Next: [capture with Redis Agent Memory](03-capture.md).

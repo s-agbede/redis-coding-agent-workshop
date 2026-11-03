@@ -78,3 +78,16 @@ def test_a_skill_below_the_relevance_threshold_is_not_used(tmp_path):
     assert store.retrieve('write a fizzbuzz function', min_score=0.7) is None
     client.get_skill_version.return_value = version_content('Use Decimal for amounts.')
     assert store.retrieve('write a fizzbuzz function') is not None
+
+
+def test_approved_answers_that_fit_the_task_are_returned(tmp_path):
+    client = Mock()
+    client.search_faqs.return_value = NS(matches=[
+        NS(version=2, score=0.91, faq=NS(question='Can I use real customer data in test fixtures?', answer='No. Use synthetic data.')),
+        NS(version=1, score=0.66, faq=NS(question='Why does one order have several tracking numbers?', answer='It ships in parts.')),
+    ])
+    store = PlaybookStore(client, tmp_path / 'p.json', skill_id='ent_team')
+    answers = store.answers('Can I put customer data in my fixtures?', min_score=0.75)
+    assert [(a.question, a.answer, a.version) for a in answers] == [
+        ('Can I use real customer data in test fixtures?', 'No. Use synthetic data.', 2)]
+    assert client.search_faqs.call_args.kwargs['query'] == 'Can I put customer data in my fixtures?'

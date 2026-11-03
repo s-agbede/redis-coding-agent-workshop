@@ -39,9 +39,9 @@ The model knows only what is in that request. Everything today is a decision abo
 
 ## How each section runs
 
-All of today's code is already in `agent.py`. One function, `handle` (`agent.py:100`), takes a task from start to finish, and three switches at `agent.py:88` turn its steps on: `CAPTURE`, `RECALL` and `PLAYBOOK`. They all start off.
+All of today's code is already in `agent.py`. One function, `handle` (`agent.py:101`), takes a task from start to finish, and three switches at `agent.py:88` turn its steps on: `CAPTURE`, `RECALL` and `PLAYBOOK`. They all start off.
 
-The instructor demonstrates each section, then you get **five minutes**: switch on that section's flag, restart, and read the lines it turned on. Click a file name like `agent.py:103` in these lessons to open the editor at that line.
+The instructor demonstrates each section, then you get **five minutes**: switch on that section's flag, restart, and read the lines it turned on. Click a file name like `agent.py:104` in these lessons to open the editor at that line.
 
 After changing `agent.py`: save, type `exit`, and start the agent again.
 
@@ -59,7 +59,7 @@ You'll see your owner ID, session ID, and which capabilities are on (all off for
 | --- | --- |
 | `/view-context` | Shows exactly what was sent to the model last |
 | `/new-session` | Starts a fresh conversation |
-| `/sessions`, `/resume <id>` | Lists your stored sessions and brings one back |
+| `/sessions`, `/resume <number>` | Lists your stored sessions, numbered, and brings one back |
 | `/events`, `/memories` | What Redis Agent Memory stored, and what it learned |
 | `/forget <id>` | Makes Redis Agent Memory forget one of your memories |
 | `/skills` | The team procedure from Redis Agent Playbook |

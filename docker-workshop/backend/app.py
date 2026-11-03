@@ -46,10 +46,32 @@ class CommandSent(BaseModel):
     status: Literal["sent"] = "sent"
 
 
+class WorkspaceReset(BaseModel):
+    status: Literal["reset"] = "reset"
+    backup: str
+
+
+# Browser actions that change the workshop: same-origin JSON only, so another site can't trigger them.
+PROTECTED_ACTIONS = {"/api/terminal/run": "Terminal commands", "/api/workspace/reset": "Workshop resets"}
+
+
+def reset_from_supplied_files(workspace: Path) -> Path:
+    """Reset with the workshop's own preparer, copied into the image next to the starting files."""
+    import importlib.util
+    source = Path(os.getenv("WORKSHOP_SOURCE", "/opt/workshop"))
+    spec = importlib.util.spec_from_file_location("prepare_workspace", source / "prepare_workspace.py")
+    if spec is None or spec.loader is None:
+        raise OSError(f"Workshop files not found in {source}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.reset_workspace(source, workspace)
+
+
 def create_app(
     workspace: Path | None = None,
     *,
     run_terminal: Callable[[str], None] | None = None,
+    reset_workspace: Callable[[], Path] | None = None,
 ) -> FastAPI:
     configured_root = (
         workspace
@@ -59,12 +81,14 @@ def create_app(
     root = configured_root.resolve()
     application = FastAPI(title="Workshop runtime")
     dispatch = run_terminal or TerminalDispatcher().run
+    reset = reset_workspace or (lambda: reset_from_supplied_files(root))
 
     @application.middleware("http")
     async def protect_terminal(
         request: Request, call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
-        if request.url.path == "/api/terminal/run" and request.method == "POST":
+        action = PROTECTED_ACTIONS.get(request.url.path)
+        if action and request.method == "POST":
             origin = f"{request.url.scheme}://{request.url.netloc}"
             browser_origin = request.headers.get("origin")
             fetch_site = request.headers.get("sec-fetch-site")
@@ -91,7 +115,7 @@ def create_app(
                 origin_logger.warning("Terminal origin rejected: %s", json.dumps(diagnostics))
                 return Response(
                     content=json.dumps({
-                        "detail": "Terminal commands require the same workshop origin.",
+                        "detail": f"{action} require the same workshop origin.",
                         "diagnostics": diagnostics,
                     }),
                     status_code=403, media_type="application/json",
@@ -99,7 +123,7 @@ def create_app(
                 )
             if request.headers.get("content-type", "").split(";", 1)[0].lower() != "application/json":
                 return Response(
-                    content='{"detail":"Terminal commands require application/json."}',
+                    content=json.dumps({"detail": f"{action} require application/json."}),
                     status_code=415, media_type="application/json",
                 )
         return await call_next(request)
@@ -113,6 +137,14 @@ def create_app(
         except (TerminalUnavailable, OSError) as error:
             raise HTTPException(503, str(error)) from error
         return CommandSent()
+
+    @application.post("/api/workspace/reset")
+    def reset_workshop() -> WorkspaceReset:
+        try:
+            backup = reset()
+        except OSError as error:
+            raise HTTPException(503, f"Could not reset the workshop: {error}") from error
+        return WorkspaceReset(backup=backup.relative_to(root).as_posix() if backup.is_relative_to(root) else str(backup))
 
     @application.exception_handler(RequestValidationError)
     async def invalid_request(

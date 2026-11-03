@@ -486,3 +486,27 @@ test('the guide has no workshop part chooser', async () => {
   assert.equal(findAll(page.root, el => el.type === 'nav').length, 0)
   page.unmount()
 })
+
+test('Reset workshop asks first, then resets and says how to continue', async () => {
+  guideBrowser()
+  const resets = []
+  const files = globalThis.fetch
+  globalThis.fetch = async (url, options = {}) => {
+    if (url !== '/api/workspace/reset') return files(url, options)
+    resets.push(options)
+    return new Response(JSON.stringify({ status: 'reset', backup: '.backups/reset-20261103-120000' }))
+  }
+  const page = await mount(Build)
+  const reset = () => findAll(page.root, el => el.type === 'button' && el.text === 'Reset workshop')[0]
+  window.confirm = () => false
+  await reset().props.onClick(); await flush()
+  assert.equal(resets.length, 0)
+  window.confirm = message => { assert.match(message, /agent\.py and project/); return true }
+  await reset().props.onClick(); await flush()
+  assert.equal(resets.length, 1)
+  assert.equal(resets[0].method, 'POST')
+  assert.equal(resets[0].headers['Content-Type'], 'application/json')
+  assert.match(textOf(page.root), /exit.*start the agent again/i)
+  assert.match(textOf(page.root), /\.backups\/reset-20261103-120000/)
+  page.unmount()
+})

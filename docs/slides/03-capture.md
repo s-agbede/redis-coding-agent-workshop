@@ -14,12 +14,16 @@
 
 ---
 
-![Keep who said what, in which session](/images/slides/17-capture-code.jpg)
+![Screened before it’s kept](/images/slides/17-sensitive-data.jpg)
 
 ---
 
-![Stored is not the same as learned](/images/slides/18-capture-evidence.jpg)
+![Keep who said what, in which session](/images/slides/18-capture-code.jpg)
 
 ---
 
-![Capture your own exchange](/images/slides/19-yt2.jpg)
+![Stored is not the same as learned](/images/slides/19-capture-evidence.jpg)
+
+---
+
+![Capture your own exchange](/images/slides/20-yt2.jpg)

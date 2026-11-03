@@ -1,4 +1,4 @@
-"""A team procedure retrieved from Redis Agent Playbook."""
+"""Team knowledge retrieved from Redis Agent Playbook: a procedure (skill) or an approved answer (FAQ)."""
 from pydantic import BaseModel, ConfigDict
 
 
@@ -7,3 +7,10 @@ class PublishedSkill(BaseModel):
     name: str
     version: int
     instructions: str
+
+
+class TeamAnswer(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    question: str
+    answer: str
+    version: int

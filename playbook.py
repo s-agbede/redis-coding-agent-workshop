@@ -1,4 +1,4 @@
-"""Publish the team skill to Redis Agent Playbook and retrieve it for a task.
+"""Publish the team skill to Redis Agent Playbook, and retrieve it and approved answers for a task.
 
 The instructor publishes once. Attendees set PLAYBOOK_SKILL_ID to that entry and only read.
 """
@@ -13,7 +13,7 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 from redis_agent_playbook import Playbook
 
-from context import PublishedSkill
+from context import PublishedSkill, TeamAnswer
 
 
 def encode_package(folder: Path) -> str:
@@ -67,3 +67,9 @@ class PlaybookStore:
             return None
         content = self.client.get_skill_version(skill_id=entry_id, version=match.version).content.payload.skill
         return PublishedSkill(name=content.manifest.name, version=match.version, instructions=content.instructions)
+
+    def answers(self, query: str, min_score: float = 0.0) -> list[TeamAnswer]:
+        """Published FAQs that fit this task. Proposals only become FAQs once a person accepts and publishes them."""
+        matches = self.client.search_faqs(query=query, limit=3).matches
+        return [TeamAnswer(question=item.faq.question, answer=item.faq.answer, version=item.version)
+                for item in matches if (item.score or 0) >= min_score]

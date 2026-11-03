@@ -1,13 +1,13 @@
 <template>
   <div class="lesson-content">
-    <div @click="handleClick" v-html="withCopyButtons(withFileButtons(html, filePaths))"></div>
+    <div @click="handleClick" v-html="withCopyButtons(withFileButtons(withCollapsibleYourTurn(html), filePaths))"></div>
     <span class="copy-status" role="status">{{ copyStatus }}</span>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { copyCode, runCode, withCopyButtons, withFileButtons } from '../lessonContent'
+import { copyCode, runCode, withCollapsibleYourTurn, withCopyButtons, withFileButtons } from '../lessonContent'
 import { getApiUrl } from '../utils/basePath'
 
 const props = withDefaults(defineProps<{ html: string; filePaths?: string[]; terminalAvailable?: boolean }>(), { filePaths: () => [], terminalAvailable: true })
@@ -130,4 +130,11 @@ async function handleClick(event: MouseEvent): Promise<void> {
 .lesson-content :deep([data-diagnostic-text]) { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .85rem; }
 .lesson-content :deep([data-copy-diagnostics]) { border: 1px solid #718096; border-radius: 4px; padding: .35rem .6rem; color: #e2e8f0; background: #2d3748; cursor: pointer; font: inherit; }
 .copy-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.lesson-content :deep(details.your-turn) { margin: 2.2rem 0 1rem; border-left: 3px solid #ff6b5e; padding-left: 1rem; }
+.lesson-content :deep(details.your-turn > summary) { cursor: pointer; list-style: none; display: flex; align-items: center; gap: .6rem; }
+.lesson-content :deep(details.your-turn > summary::-webkit-details-marker) { display: none; }
+.lesson-content :deep(details.your-turn > summary::before) { content: '▸'; color: #ff6b5e; font-size: 1.4rem; line-height: 1; transition: transform .15s; }
+.lesson-content :deep(details.your-turn[open] > summary::before) { transform: rotate(90deg); }
+.lesson-content :deep(details.your-turn > summary h2) { margin: 0; }
+.lesson-content :deep(details.your-turn > summary:focus-visible) { outline: 2px solid #fff; outline-offset: 3px; }
 </style>

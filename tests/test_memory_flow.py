@@ -10,7 +10,7 @@ import pytest
 pytest.importorskip('redis_agent_memory')
 pytest.importorskip('redis_agent_playbook')
 from openai.types.chat import ChatCompletionMessage
-from context import PublishedSkill
+from context import PublishedSkill, TeamAnswer
 from runtime import Workshop
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -52,6 +52,7 @@ def test_each_flag_switches_on_only_its_own_step(tmp_path, capture, recall, play
     memory, published = Mock(), Mock()
     memory.search_long_term_memory.return_value.items = [SimpleNamespace(text='Prefers Google-style docstrings.')]
     published.retrieve.return_value = PublishedSkill(name='report-validation', version=2, instructions='Use Decimal.')
+    published.answers.return_value = [TeamAnswer(question='Can I use real customer data?', answer='No. Use synthetic data.', version=1)]
     app = Workshop(load_agent(capture, recall, playbook), scripted_model(), memory, published, 'learner', tmp_path, tmp_path / 'out')
     assert app.turn('Create a sample') == 'Created the sample.'
     assert (tmp_path / 'sample.py').is_file()
@@ -67,10 +68,12 @@ def test_each_flag_switches_on_only_its_own_step(tmp_path, capture, recall, play
     assert published.retrieve.called == playbook
     if playbook:
         assert published.retrieve.call_args.kwargs == {'min_score': 0.7}
+        assert published.answers.call_args.kwargs == {'min_score': 0.75}
     request = str(app.state.last_request)
     assert 'Use type hints.' in request
     assert ('Prefers Google-style docstrings.' in request) == recall
     assert ('report-validation, version 2' in request) == playbook
+    assert ('No. Use synthetic data.' in request) == playbook
 
 
 def test_the_session_keeps_the_conversation_but_not_the_recalled_context(tmp_path):

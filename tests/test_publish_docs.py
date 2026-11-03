@@ -63,3 +63,17 @@ def test_retired_generated_lessons_removed_but_custom_asset_preserved(tmp_path):
     assert publish(root).returncode == 0
     assert not old.exists()
     assert custom.read_text() == '<svg/>'
+
+
+def test_files_the_sources_no_longer_produce_are_removed(tmp_path):
+    root = workspace(tmp_path)
+    public = root/'docker-workshop/frontend/public'
+    stale = [public/'solutions/steps/01-capture.py', public/'images/slides/99-old.jpg', root/'docker-workshop/docs/images/slides/99-old.jpg']
+    for path in stale:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text('old')
+    assert publish(root, '--check').returncode == 1
+    assert publish(root).returncode == 0
+    assert not any(path.exists() for path in stale)
+    assert (public/'solutions/validator.py').is_file()
+    assert publish(root, '--check').returncode == 0

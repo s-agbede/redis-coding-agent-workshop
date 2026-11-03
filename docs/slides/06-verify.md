@@ -1,25 +1,25 @@
-![Trust, but verify](/images/slides/33-d5.jpg)
+![Trust, but verify](/images/slides/36-d5.jpg)
 
 ---
 
-![Every piece of the request has an owner](/images/slides/34-three-in-request.jpg)
+![Every piece of the request has an owner](/images/slides/37-three-in-request.jpg)
 
 ---
 
-![The tests decide, not the agent](/images/slides/35-verify.jpg)
+![The tests decide, not the agent](/images/slides/38-verify.jpg)
 
 ---
 
-![Build and verify the validator](/images/slides/36-yt5.jpg)
+![Build and verify the validator](/images/slides/39-yt5.jpg)
 
 ---
 
-![Three sources, three owners](/images/slides/37-owners.jpg)
+![Three sources, three owners](/images/slides/40-owners.jpg)
 
 ---
 
-![Taking this to production](/images/slides/38-governance.jpg)
+![Taking this to production](/images/slides/41-governance.jpg)
 
 ---
 
-![Three sources, three owners, each one checkable.](/images/slides/39-close.jpg)
+![Three sources, three owners, each one checkable.](/images/slides/42-close.jpg)
