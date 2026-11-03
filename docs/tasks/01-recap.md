@@ -1,6 +1,6 @@
 # Recap: what goes into the request
 
-**4 minutes.** Part 1 built a working coding agent. Today we decide what that agent should *know*.
+**3 minutes.** Part 1 built a working coding agent. Today we decide what that agent should *know*.
 
 ## What Part 1 covered
 
@@ -38,7 +38,7 @@ The model knows only what is in that request. Everything today is a decision abo
 
 All of today's code is already in `agent.py`. One function, `handle` (`agent.py:handle`), takes a task from start to finish, and three switches at `agent.py:flags` turn its steps on: `CAPTURE`, `RECALL` and `PLAYBOOK`. They all start off.
 
-The instructor demonstrates each section, then you get **five minutes**: switch on that section's flag, restart, and read the lines it turned on. Click a file name like `agent.py:capture` in these lessons to open the editor at that line.
+The instructor demonstrates each section, then you get **a few minutes**: switch on that section's flag, restart, and read the lines it turned on. Click a file name like `agent.py:capture` in these lessons to open the editor at that line.
 
 After changing `agent.py`: save, type `exit`, and start the agent again.
 
@@ -60,6 +60,5 @@ You'll see your owner ID, session ID, and which capabilities are on (all off for
 | `/events`, `/memories` | What Redis Agent Memory stored, and what it learned |
 | `/forget <id>` | Makes Redis Agent Memory forget one of your memories |
 | `/skills` | The team procedure from Redis Agent Playbook |
-| `/verify` | Runs the project's tests |
 
 Next: [the amnesiac](02-forgetting.md).

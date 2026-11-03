@@ -25,7 +25,7 @@ def prepare_workspace(source: Path, workspace: Path) -> None:
                  'pyproject.toml', 'uv.lock', 'README.md', 'WORKSHOP.md', 'FACILITATOR.md'):
         if (source / name).is_file():
             shutil.copy2(source / name, workspace / name)
-    for name in ('solutions', 'tests', 'skills', 'docs', 'scripts'):
+    for name in ('tests', 'skills', 'docs', 'scripts'):
         if (source / name).is_dir():
             shutil.copytree(source / name, workspace / name, dirs_exist_ok=True,
                             ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))

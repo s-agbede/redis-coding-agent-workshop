@@ -33,7 +33,6 @@ COPY runtime.py context.py playbook.py completion.py /opt/workshop/
 COPY project /opt/workshop/project
 COPY skills /opt/workshop/skills
 COPY docs /opt/workshop/docs
-COPY solutions /opt/workshop/solutions
 COPY tests /opt/workshop/tests
 COPY scripts /opt/workshop/scripts
 COPY scripts/prepare_workspace.py /opt/workshop/prepare_workspace.py

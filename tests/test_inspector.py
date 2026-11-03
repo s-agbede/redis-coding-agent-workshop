@@ -105,3 +105,13 @@ def test_you_can_forget_your_own_memories_but_not_someone_elses(inspector):
     with pytest.raises(PermissionError):
         module.forget('m2')
     assert client.bulk_delete_long_term_memories.call_count == 1
+
+
+def test_a_session_says_whether_extraction_has_caught_up(inspector, monkeypatch):
+    module, client = inspector
+    client.get_session_memory.return_value.model_dump.return_value = {'ownerId': 'learner-a', 'events': [
+        {'eventId': 'e1', 'role': 'USER', 'content': [{'text': 'hi'}]}, {'eventId': 'e2', 'role': 'ASSISTANT', 'content': [{'text': 'yo'}]}]}
+    monkeypatch.setattr(module, 'extraction_bookmark', lambda session_id: 'e1')
+    assert module.session('s1')['extraction'] == 'pending'
+    monkeypatch.setattr(module, 'extraction_bookmark', lambda session_id: 'e2')
+    assert module.session('s1')['extraction'] == 'up to date'

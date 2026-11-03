@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 LESSONS = (
     '01-recap.md', '02-forgetting.md', '03-capture.md',
-    '04-recall.md', '05-playbook.md', '06-verify.md',
+    '04-recall.md', '05-playbook.md',
 )
 # Each lesson shows its section of the presenter deck: docs/slides/<lesson>.md holds the slide images,
 # rendered from docs/deck by scripts/render_slides.py.
@@ -48,7 +48,7 @@ def lesson_links(text: str, source: str) -> str:
             target = '/build?lesson=' + posixpath.basename(resolved)
         elif resolved.startswith('docs/images/'):
             target = '/' + resolved.removeprefix('docs/')
-        elif resolved.startswith(('skills/', 'solutions/', 'project/', 'docs/')) or resolved in ('WORKSHOP.md', 'FACILITATOR.md'):
+        elif resolved.startswith(('skills/', 'project/', 'docs/')) or resolved in ('WORKSHOP.md', 'FACILITATOR.md'):
             target = '/' + resolved
         else:
             return match[0]
@@ -73,7 +73,7 @@ def published_files(root: Path) -> dict[Path, bytes]:
     for name in ('WORKSHOP.md', 'FACILITATOR.md'):
         if (root / name).is_file():
             outputs[public / name] = lesson_links((root / name).read_text(), name).encode()
-    for folder in ('skills', 'solutions', 'project'):
+    for folder in ('skills', 'project'):
         for source in sorted((root / folder).rglob('*')):
             if source.is_file() and '__pycache__' not in source.parts and source.suffix in ('.md', '.py', '.json'):
                 outputs[public / source.relative_to(root)] = source.read_bytes()

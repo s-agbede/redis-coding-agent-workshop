@@ -9,5 +9,3 @@ steps:
     title: Recall in a fresh session
   - file: 05-playbook.md
     title: The team's way: Redis Agent Playbook
-  - file: 06-verify.md
-    title: Trust, but verify

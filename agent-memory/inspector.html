@@ -30,6 +30,9 @@
   .editor { margin-top:8px; }
   .editor textarea { width:100%; background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:8px; font:12px/1.5 ui-monospace, Menlo, monospace; }
   .buttons { display:flex; gap:6px; margin-top:6px; }
+  .extraction { font-weight: 600; margin: .25rem 0 1rem; }
+  .extraction.pending { color: #f5a524; }
+  .extraction.done { color: #4ade80; }
 </style>
 </head>
 <body>
@@ -101,10 +104,14 @@ async function showSessions() {
 async function showSession(id) {
   view.replaceChildren(el('p', 'note', 'Loading…'));
   try {
-    const { events } = await get('sessions/' + encodeURIComponent(id));
+    const { events, extraction } = await get('sessions/' + encodeURIComponent(id));
     const back = el('button', 'refresh', '← All sessions');
     back.onclick = () => render('sessions');
-    view.replaceChildren(back, el('p', 'meta', 'Session ' + id));
+    // Wait for "up to date" before pressing Forget: a pending run could learn the preference again.
+    const status = el('p', 'extraction ' + (extraction === 'pending' ? 'pending' : 'done'),
+      extraction === 'pending' ? 'Extraction: pending, runs within about a minute of the last message'
+                               : 'Extraction: up to date');
+    view.replaceChildren(back, el('p', 'meta', 'Session ' + id), status);
     for (const event of events) {
       const card = el('div', 'card');
       card.append(el('div', 'role ' + event.role.toLowerCase(), event.role + (event.actor ? ' · ' + event.actor : '')),

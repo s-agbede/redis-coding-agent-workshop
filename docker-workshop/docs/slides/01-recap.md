@@ -22,4 +22,4 @@
 
 ---
 
-![A demo, then five minutes for you](/images/slides/07-agenda.jpg)
+![A demo, then a few minutes for you](/images/slides/07-agenda.jpg)

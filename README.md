@@ -24,9 +24,8 @@ Open http://localhost:8080 for the instructions, editor and terminal side by sid
 ## What's here
 
 - `agent.py`: the learner's agent. Part 1's loop, plus `handle`, which does one task from start to finish; each section switches on one of its flags (`CAPTURE`, `RECALL`, `PLAYBOOK`). `main.py`, `runtime.py`, `playbook.py`, `tools.py`, `ui.py` and `context.py` are the supplied runtime.
-- `project/`: the small report project the agent works in, with its tests.
+- `project/`: the small project the agent works in; its `AGENTS.md` holds the project's conventions.
 - `skills/report-validation/`: the team skill published to Playbook.
-- `solutions/validator.py`: a reference answer for the final task.
 - `agent-memory/`: the Agent Memory inspector panel, and setup for self-hosting.
 - `docs/deck/`: the presenter deck's source (the Claude Slides artifact). `python3 scripts/render_slides.py` renders it to `docs/images/slides/`, which each lesson shows through `docs/slides/<lesson>.md`.
 - `docs/tasks/`: the lessons. After editing them, run `uv run python scripts/publish_docs.py` to refresh the browser copies.

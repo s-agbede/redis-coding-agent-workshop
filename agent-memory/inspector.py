@@ -122,13 +122,33 @@ def sessions() -> dict[str, Any]:
     return {'owner': owner(), 'sessions': memory().list_sessions(filter_owner_id=owner()).items}
 
 
+EXTRACTION_BOOKMARK = 'custom_extracted_up_to_event_id_coding_preference'
+
+
+def extraction_bookmark(session_id: str) -> str | None:
+    """The last event extraction has reached for coding_preference (an internal marker), or None."""
+    store = read_setting('AGENT_MEMORY_STORE_ID')
+    request = Request(f'{os.environ["AGENT_MEMORY_URL"]}/v1/stores/{store}/session-memory/{session_id}/properties/'
+                      f'{EXTRACTION_BOOKMARK}',
+                      headers={'Authorization': f'Bearer {os.environ.get("AGENT_MEMORY_API_KEY") or "none"}'})
+    try:
+        with urlopen(request, timeout=10) as response:
+            return json.loads(response.read()).get('value')
+    except HTTPError as error:
+        if error.code == 404:
+            return None
+        raise
+
+
 def session(session_id: str) -> dict[str, Any]:
     stored = memory().get_session_memory(session_id=session_id).model_dump(mode='json', by_alias=True)
     if stored.get('ownerId') != owner():
         raise PermissionError('That session belongs to someone else.')
-    return {'sessionId': session_id, 'events': [
+    events = stored['events']
+    caught_up = bool(events) and extraction_bookmark(session_id) == events[-1].get('eventId')
+    return {'sessionId': session_id, 'extraction': 'up to date' if caught_up else 'pending', 'events': [
         {'role': event['role'], 'actor': event.get('actorId'), 'createdAt': event.get('createdAt'), 'text': text_of(event)}
-        for event in stored['events']
+        for event in events
     ]}
 
 

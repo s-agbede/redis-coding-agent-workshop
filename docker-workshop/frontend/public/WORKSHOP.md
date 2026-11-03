@@ -1,6 +1,6 @@
 # Give your coding agent useful memory
 
-**90 minutes, Part 2 of the coding agent workshop.** Give a working coding agent **Redis Agent Memory**, so it remembers a developer's preferences across sessions, and **Redis Agent Playbook**, so it follows the team's published procedure. Then check its work with the project's tests.
+**90 minutes, Part 2 of the coding agent workshop.** Give a working coding agent **Redis Agent Memory**, so it remembers a developer's preferences across sessions, and **Redis Agent Playbook**, so it follows the team's published procedure and approved answers.
 
 **Audience:** software engineers who have used AI agents a little. Part 1 helps; the recap covers what's needed.
 
@@ -8,18 +8,18 @@
 
 ## Schedule
 
-Each section is an instructor demo followed by five minutes of hands-on. All the code is already in `agent.py`: each section switches on one flag (`CAPTURE`, `RECALL`, `PLAYBOOK`) and attendees read the lines it turns on, linked from the lesson.
+Each section is an instructor demo followed by a few minutes of hands-on, about an hour of content in all. All the code is already in `agent.py`: each section switches on one flag (`CAPTURE`, `RECALL`, `PLAYBOOK`) and attendees read the lines it turns on, linked from the lesson.
 
 | Elapsed | Section | Demo | Your turn |
 | --- | --- | --- | --- |
-| 0–4 | [Recap: what goes into the request](/build?lesson=01-recap.md) | 4 | — |
-| 4–17 | [The amnesiac and notes on the desk](/build?lesson=02-forgetting.md) | 8 | 5 |
-| 17–32 | [Capture with Redis Agent Memory](/build?lesson=03-capture.md) | 10 | 5 |
-| 32–47 | [Recall in a fresh session](/build?lesson=04-recall.md) | 10 | 5 |
-| 47–64 | [The team's way: Redis Agent Playbook](/build?lesson=05-playbook.md) | 12 | 5 |
-| 64–75 | [Trust, but verify](/build?lesson=06-verify.md) | 6 | 5 |
-| 75–85 | Discussion | | |
-| 85–90 | Buffer | | |
+| 0–3 | [Recap: what goes into the request](/build?lesson=01-recap.md) | 3 | — |
+| 3–14 | [The amnesiac and notes on the desk](/build?lesson=02-forgetting.md) | 7 | 4 |
+| 14–28 | [Capture with Redis Agent Memory](/build?lesson=03-capture.md) | 10 | 4 |
+| 28–42 | [Recall in a fresh session](/build?lesson=04-recall.md) | 10 | 4 |
+| 42–59 | [The team's way: Redis Agent Playbook](/build?lesson=05-playbook.md) | 12 | 5 |
+| 59–61 | Close: three sources in one request | 2 | — |
+| 61–80 | Discussion and questions | | |
+| 80–90 | Buffer | | |
 
 Extraction runs in the background while the instructor demonstrates recall, so attendees' preferences are ready by their next turn. The instructor publishes the team skill once; attendees only read it.
 
@@ -31,7 +31,7 @@ Extraction runs in the background while the instructor demonstrates recall, so a
 | Personal preference | "I like Google-style docstrings." | Redis Agent Memory |
 | Team rule | How report rows are validated | Redis Agent Playbook |
 
-The final task: "Implement `validate_report` in `validator.py` and make the tests pass."
+The close: with all three switched on, one request carries all three, and `/view-context` shows where each came from.
 
 ## Assets
 

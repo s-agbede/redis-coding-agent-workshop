@@ -4,4 +4,3 @@
 * [3. Capture](#/tasks/03-capture)
 * [4. Recall](#/tasks/04-recall)
 * [5. Playbook](#/tasks/05-playbook)
-* [6. Verify](#/tasks/06-verify)

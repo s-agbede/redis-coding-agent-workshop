@@ -14,12 +14,24 @@
 
 ---
 
-![Change the procedure; every agent gets version 2](/images/slides/33-version2.jpg)
+![From many conversations to one approved answer](/images/slides/33-promotion.jpg)
 
 ---
 
-![From many conversations to one approved answer](/images/slides/34-promotion.jpg)
+![Retrieve the team’s procedure](/images/slides/34-yt4.jpg)
 
 ---
 
-![Retrieve the team’s procedure](/images/slides/35-yt4.jpg)
+![Every piece of the request has an owner](/images/slides/35-three-in-request.jpg)
+
+---
+
+![Three sources, three owners](/images/slides/36-owners.jpg)
+
+---
+
+![Taking this to production](/images/slides/37-governance.jpg)
+
+---
+
+![Three sources, three owners, each one checkable.](/images/slides/38-close.jpg)

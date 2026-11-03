@@ -39,13 +39,9 @@
   "personal-org",
   "playbook-flow",
   "skill-code",
-  "version2",
   "promotion",
   "yt4",
-  "d5",
   "three-in-request",
-  "verify",
-  "yt5",
   "owners",
   "governance",
   "close"
@@ -71,13 +67,9 @@
    "description": "The team’s way: one procedure published to Redis Agent Playbook, retrieved by every agent.",
    "start": "d4"
   },
-  "s5": {
-   "description": "Trust, but verify: three sources in one request, judged by an independent checker.",
-   "start": "d5"
-  },
   "s6": {
-   "description": "Close: three sources, three owners, and the governance discussion.",
-   "start": "owners"
+   "description": "Close: three sources in one request, who owns each, and the governance questions.",
+   "start": "three-in-request"
   }
  },
  "faces": {

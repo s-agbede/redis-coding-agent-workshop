@@ -32,7 +32,7 @@ def test_single_workshop_order_slides_and_editor_paths(tmp_path):
     assert 'editorFile: agent.py' in recap
     assert 'editorFile: project/AGENTS.md' in (public/'build-steps/02-forgetting.md').read_text()
     assert (public/'skills/report-validation/SKILL.md').is_file()
-    assert (public/'project/tests/test_validator.py').is_file()
+    assert (public/'project/AGENTS.md').is_file()
     assert not (public/'part2').exists()
     assert 'title: Give a coding agent useful memory' in (public/'welcome.md').read_text()
     assert publish(root,'--check').returncode == 0
@@ -75,5 +75,5 @@ def test_files_the_sources_no_longer_produce_are_removed(tmp_path):
     assert publish(root, '--check').returncode == 1
     assert publish(root).returncode == 0
     assert not any(path.exists() for path in stale)
-    assert (public/'solutions/validator.py').is_file()
+    assert (public/'project/AGENTS.md').is_file()
     assert publish(root, '--check').returncode == 0

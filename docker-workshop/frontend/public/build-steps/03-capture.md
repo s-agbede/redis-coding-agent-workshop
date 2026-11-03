@@ -3,7 +3,7 @@ title: Capture with Redis Agent Memory
 editorFile: agent.py
 slides: /slides/03-capture.md
 ---
-**10-minute demo, 5 minutes for you.** Instead of writing preferences down by hand, record the conversation and let Redis Agent Memory decide what's worth keeping.
+**10-minute demo, 4 minutes for you.** Instead of writing preferences down by hand, record the conversation and let Redis Agent Memory decide what's worth keeping.
 
 ## The three jobs
 
@@ -54,7 +54,7 @@ In test fixtures, use my email jane.doe@example.com as the sample address.
 
 Resuming replays everything, though, which is the "everything in every request" problem again. You want just the bits that matter. Run `/memories`: it may still be empty, because extraction runs in the background. We come back to it in the next section.
 
-## Your turn (5 minutes)
+## Your turn (4 minutes)
 
 **1.** In `agent.py:88`, switch capture on:
 

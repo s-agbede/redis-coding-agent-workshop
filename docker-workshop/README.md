@@ -19,7 +19,7 @@ Open **http://localhost:8080**. `WORKSHOP_PORT` chooses another port;
 `WORKSHOP_BIND_ADDRESS` defaults to `0.0.0.0` for hosted labs; use `127.0.0.1` for local-only access. Each learner needs their own stack.
 The first build downloads VS Code and the locked Python dependencies.
 
-The Instructions panel guides you through **Welcome → Workshop**. The seven lessons start with a supplied coding agent, then add persistent project instructions, session-event capture, preference recall and a shared procedure. The final lesson generates and independently checks a report validator. Slides are labelled placeholders.
+The Instructions panel guides you through **Welcome → Workshop**. The five lessons start with a supplied coding agent, then add project instructions, session capture with Redis Agent Memory, preference recall, and team knowledge from Redis Agent Playbook, ending with all three sources in one request.
 
 ## Workbench panels
 

@@ -1,6 +1,6 @@
 # Recall in a fresh session
 
-**10-minute demo, 5 minutes for you.** Bring back just the preference, not the whole conversation, and change your mind when you need to.
+**10-minute demo, 4 minutes for you.** Bring back just the preference, not the whole conversation, and change your mind when you need to.
 
 ## Demo: extraction happened
 
@@ -62,7 +62,9 @@ To drop it altogether, open the **Agent Memory** panel's **Long-term memories** 
 
 Forgetting is per person and immediate, and the store's retention settings expire old memories without anyone remembering to. That's the lifecycle job.
 
-## Your turn (5 minutes)
+One catch: extraction runs about a minute after each message, on that minute's messages. If you forget a preference while a run is still pending, that run can learn it again. Before pressing **Forget**, open the session in the panel's **Sessions** tab (or run `/events`) and wait for *Extraction: up to date*. Forgetting removes what was learned, not the conversation: the session itself is kept until it expires (a day here).
+
+## Your turn (4 minutes)
 
 **1.** In `agent.py:flags`, switch recall on:
 
@@ -108,7 +110,7 @@ Actually, I've switched to NumPy-style docstrings.
 
 **Look for:** the same memory, updated.
 
-**5.** Forget the preference in the **Agent Memory** panel (**Forget** next to it), and ask for the de-duplication function again. **Look for:** *Recalled: nothing*. Then state the Google-style preference again, so it's there for the last section.
+**5.** Run `/events` and wait for *Extraction: up to date*. Then forget the preference in the **Agent Memory** panel (**Forget** next to it), and ask for the de-duplication function again. **Look for:** *Recalled: nothing*. Then state the Google-style preference again, so it's there for the last section.
 
 **6.** Ask one more question. Every agent will answer it differently; in the next section the team approves one answer:
 

@@ -1,5 +1,4 @@
 """Session commands and request assembly, observed through the runtime."""
-import shutil
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -60,17 +59,6 @@ def test_view_context_shows_each_message_of_the_latest_request(tmp_path, capsys)
     shown = capsys.readouterr().out
     assert '[1] system: You are a coding assistant.' in shown
     assert '(asks to run read_file)' in shown and '[3] user: Write a function' in shown
-
-
-def test_verify_runs_the_project_tests(tmp_path, capsys):
-    project = tmp_path / 'project'
-    shutil.copytree(ROOT / 'project', project)
-    app = runtime.Workshop(LEARNER, Mock(), None, None, 'owner', project, tmp_path / 'out')
-    app.command('/verify')
-    assert 'Tests failed.' in capsys.readouterr().out
-    shutil.copy(ROOT / 'solutions/validator.py', project / 'validator.py')
-    app.command('/verify')
-    assert 'Tests passed.' in capsys.readouterr().out
 
 
 def test_status_and_inspection_never_call_the_model(tmp_path, capsys):
@@ -170,3 +158,35 @@ def test_resume_accepts_a_list_number_or_the_start_of_an_id(tmp_path):
     assert app.state.session_id == first
     with pytest.raises(ValueError, match='No stored session 9'):
         app.command('/resume 9')
+
+
+def fake_memory_with_bookmark(status_code: int, value: str | None = None) -> SimpleNamespace:
+    """An SDK-shaped client whose HTTP client answers the extraction-bookmark request."""
+    requested = []
+    def get(url, headers):
+        requested.append((url, headers))
+        return SimpleNamespace(status_code=status_code, json=lambda: {'value': value})
+    config = SimpleNamespace(server_url='http://memory', globals=SimpleNamespace(store_id='store-1'),
+                             security=SimpleNamespace(api_key='key-1'), client=SimpleNamespace(get=get))
+    return SimpleNamespace(sdk_configuration=config, requested=requested)
+
+
+def test_extraction_is_up_to_date_once_its_bookmark_reaches_the_last_event():
+    memory = fake_memory_with_bookmark(200, 'event-9')
+    assert runtime.extraction_status(memory, 'session-1', 'event-9') == 'up to date'
+    url, headers = memory.requested[0]
+    assert url == ('http://memory/v1/stores/store-1/session-memory/session-1/properties/'
+                   'custom_extracted_up_to_event_id_coding_preference')
+    assert headers == {'Authorization': 'Bearer key-1'}
+    assert runtime.extraction_status(fake_memory_with_bookmark(200, 'event-8'), 'session-1', 'event-9') == 'pending'
+    assert runtime.extraction_status(fake_memory_with_bookmark(404), 'session-1', 'event-9') == 'pending'
+
+
+def test_events_ends_with_whether_extraction_has_caught_up(tmp_path, capsys, monkeypatch):
+    memory = Mock()
+    memory.get_session_memory.return_value.model_dump.return_value = {'events': [
+        {'eventId': 'event-9', 'role': 'USER', 'actorId': 'owner', 'content': [{'text': 'I like Google-style docstrings.'}]}]}
+    monkeypatch.setattr(runtime, 'extraction_status', lambda client, session_id, last: 'pending')
+    app = runtime.Workshop(LEARNER, Mock(), memory, None, 'owner', tmp_path, tmp_path / 'out')
+    app.command('/events')
+    assert 'Extraction: pending' in capsys.readouterr().out

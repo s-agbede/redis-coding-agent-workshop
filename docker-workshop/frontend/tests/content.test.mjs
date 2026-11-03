@@ -29,7 +29,7 @@ test('Python code survives Markdown rendering without losing indentation or **kw
 test('the six memory lessons follow the agreed learning order and link to existing exercise files', async () => {
   const manifest = await readFile(new URL('../public/build-steps/manifest.yaml', import.meta.url), 'utf8')
   const names = [...manifest.matchAll(/- file: (.+)/g)].map(match => match[1])
-  assert.deepEqual(names, ['01-recap.md', '02-forgetting.md', '03-capture.md', '04-recall.md', '05-playbook.md', '06-verify.md'])
+  assert.deepEqual(names, ['01-recap.md', '02-forgetting.md', '03-capture.md', '04-recall.md', '05-playbook.md'])
   for (const name of names) {
     const lesson = await readFile(new URL('../public/build-steps/' + name, import.meta.url), 'utf8')
     assert.ok(!lesson.includes('/vscode/'))

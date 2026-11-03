@@ -1,6 +1,6 @@
 # The amnesiac and notes on the desk
 
-**8-minute demo, 5 minutes for you.** A preference works within a session and is gone in the next. Writing it down fixes that, at a cost.
+**7-minute demo, 4 minutes for you.** A preference works within a session and is gone in the next. Writing it down fixes that, at a cost.
 
 ## Demo: the amnesiac
 
@@ -51,7 +51,7 @@ Remove the docstring line from AGENTS.md.
 
 Having to remember that step is the "nothing expires" problem in miniature.
 
-## Your turn (5 minutes)
+## Your turn (4 minutes)
 
 **1.** Tell the agent your preference, then ask for the slug function:
 

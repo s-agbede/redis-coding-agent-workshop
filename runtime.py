@@ -4,8 +4,6 @@ from __future__ import annotations
 from contextlib import contextmanager
 import os
 from pathlib import Path
-import subprocess
-import sys
 from types import ModuleType
 from typing import Any, Callable, Iterator
 from uuid import uuid4
@@ -30,13 +28,30 @@ COMMANDS = {
     '/forget': 'Forget one of your memories: /forget <id>',
     '/skills': 'The team procedure from Agent Playbook',
     '/publish-skill': 'Publish the team skill (instructor)',
-    '/verify': "Run the project's tests",
     '/help': 'List the commands',
 }
 HELP = (
     '/status  /view-context  /new-session  /sessions  /resume <number>\n'
-    '/events  /memories  /forget <id>  /skills  /publish-skill (instructor)  /verify  /help  exit'
+    '/events  /memories  /forget <id>  /skills  /publish-skill (instructor)  /help  exit'
 )
+
+
+# After each extraction run, Agent Memory records on the session the last event it extracted
+# for each memory type. It is an internal marker, not a documented API, so treat it as a hint.
+EXTRACTION_BOOKMARK = 'custom_extracted_up_to_event_id_coding_preference'
+
+
+def extraction_status(memory: Any, session_id: str, last_event_id: str) -> str:
+    """'up to date' once extraction has reached the session's last event, otherwise 'pending'."""
+    config = memory.sdk_configuration
+    url = (f'{config.server_url}/v1/stores/{config.globals.store_id}/session-memory/'
+           f'{session_id}/properties/{EXTRACTION_BOOKMARK}')
+    response = config.client.get(url, headers={'Authorization': f'Bearer {config.security.api_key}'})
+    if response.status_code == 404:
+        return 'pending'  # not extracted yet
+    if response.status_code != 200:
+        raise RuntimeError(f'Could not read extraction status: HTTP {response.status_code}')
+    return 'up to date' if response.json().get('value') == last_event_id else 'pending'
 
 
 class Session(BaseModel):
@@ -264,6 +279,9 @@ class Workshop:
                 print(f'{event["role"]} ({event.get("actorId", "?")}): {text[:150]}')
             if not events:
                 print('No events stored for this session.')
+                return
+            status = extraction_status(self.memory_client(), self.state.session_id, events[-1]['eventId'])
+            print(f'\nExtraction: {status}' + (' (runs within about a minute of the last message)' if status == 'pending' else ''))
         elif name == '/memories':
             items = self.memory_client().search_long_term_memory(request={
                 'filter_': {'owner_id': {'eq': self.state.owner}},
@@ -293,11 +311,6 @@ class Workshop:
                 print('No published team skill found.')
             else:
                 print(f'{skill.name}, version {skill.version}\n\n{skill.instructions}')
-        elif name == '/verify':
-            result = subprocess.run([sys.executable, '-m', 'pytest', '-q', '-p', 'no:cacheprovider'],
-                                    cwd=self.state.project, text=True, capture_output=True, timeout=60)
-            print(result.stdout + result.stderr)
-            print('Tests passed.' if result.returncode == 0 else 'Tests failed.')
         elif name == '/help':
             print(HELP)
         else:

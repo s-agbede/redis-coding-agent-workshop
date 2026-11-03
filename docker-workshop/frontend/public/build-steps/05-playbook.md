@@ -3,7 +3,7 @@ title: The team's way: Redis Agent Playbook
 editorFile: agent.py
 slides: /slides/05-playbook.md
 ---
-**15-minute demo, 5 minutes for you.** Redis Agent Memory learned how *you* like code written. How the *team* validates a report, or what it says about customer data, is a different kind of knowledge.
+**12-minute demo, 5 minutes for you, then a 2-minute close.** Redis Agent Memory learned how *you* like code written. How the *team* validates a report, or what it says about customer data, is a different kind of knowledge.
 
 ## From personal to organisational
 
@@ -48,8 +48,6 @@ What are our rules for validating report rows?
 ```
 
 This time it says *Team procedure: report-validation, version 1*, and `/view-context` shows the procedure in the second message.
-
-**Optional:** the instructor adds a rule to the skill and runs `/publish-skill` again. It becomes version 2 of the same entry, and your next `/skills` shows it.
 
 ## Demo: from conversations to a team answer
 
@@ -123,4 +121,20 @@ Can I put real customer records in my test fixtures?
 
 **Try your own:** ask something close to the procedure in different words, such as "How should I handle money amounts in a report?", and see whether it scores high enough.
 
-Next: [trust, but verify](/build?lesson=06-verify.md).
+## Close: three sources in one request
+
+With all three flags on, the instructor starts a fresh session and asks:
+
+```text
+Show me a function that validates the rows of a report.
+```
+
+`/view-context` shows where each piece of knowledge came from:
+
+| In the request | Source | Owner |
+| --- | --- | --- |
+| "Python with type hints" | `AGENTS.md` | The project |
+| "What you know about this user's preferences" | Redis Agent Memory | You |
+| "Team procedure from Redis Agent Playbook" | Redis Agent Playbook | The organisation |
+
+**Discussion:** pick one of each from your own team. Who should be able to read a memory? How would you correct or delete one? Who approves publishing a procedure or an answer?
