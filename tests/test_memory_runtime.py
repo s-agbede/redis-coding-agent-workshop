@@ -190,3 +190,28 @@ def test_events_ends_with_whether_extraction_has_caught_up(tmp_path, capsys, mon
     app = runtime.Workshop(LEARNER, Mock(), memory, None, 'owner', tmp_path, tmp_path / 'out')
     app.command('/events')
     assert 'Extraction: pending' in capsys.readouterr().out
+
+
+def test_the_start_after_a_reset_deletes_the_previous_learners_memories_and_sessions(tmp_path):
+    output = tmp_path / 'out'
+    output.mkdir()
+    (output / 'forget.json').write_text('{"owner": "learner-old"}')
+    memory = Mock()
+    memory.search_long_term_memory.side_effect = [
+        SimpleNamespace(items=[SimpleNamespace(id='m1'), SimpleNamespace(id='m2')]), SimpleNamespace(items=[])]
+    memory.list_sessions.return_value.items = ['s1', 's2', 's3']
+    assert runtime.forget_previous_learner(output, memory) == 'Deleted 2 memories and 3 sessions of the previous learner.'
+    memory.bulk_delete_long_term_memories.assert_called_once_with(memory_ids=['m1', 'm2'])
+    assert memory.search_long_term_memory.call_args.kwargs['request']['filter_'] == {'owner_id': {'eq': 'learner-old'}}
+    memory.list_sessions.assert_called_once_with(filter_owner_id='learner-old')
+    assert [c.kwargs['session_id'] for c in memory.delete_session_memory.call_args_list] == ['s1', 's2', 's3']
+    assert not (output / 'forget.json').exists()
+    assert runtime.forget_previous_learner(output, memory) is None  # nothing pending
+
+
+def test_without_agent_memory_the_reset_note_is_kept_for_later(tmp_path):
+    output = tmp_path / 'out'
+    output.mkdir()
+    (output / 'forget.json').write_text('{"owner": "learner-old"}')
+    assert 'not configured' in runtime.forget_previous_learner(output, None)
+    assert (output / 'forget.json').exists()

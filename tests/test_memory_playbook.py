@@ -1,6 +1,7 @@
 """Publishing and retrieving the team skill, with the Playbook SDK replaced by a mock."""
 import base64
 import io
+import json
 from types import SimpleNamespace as NS
 from unittest.mock import Mock
 from zipfile import ZipFile
@@ -48,27 +49,29 @@ def test_changed_skill_becomes_the_next_version_of_the_same_entry(tmp_path):
     client.publish_skill.assert_called_with(skill_id='ent_team', version=2)
 
 
-def test_attendees_retrieve_the_instructor_skill_and_cannot_publish(tmp_path):
+def test_the_best_fitting_team_skill_is_retrieved_and_attendees_cannot_publish(tmp_path):
     client = Mock()
-    client.search_skills.return_value = NS(matches=[NS(entry_id='ent_other', version=4, score=0.9), NS(entry_id='ent_team', version=2, score=0.8)])
-    client.get_skill_version.return_value = version_content('Use Decimal for amounts.')
+    client.search_skills.return_value = NS(matches=[NS(entry_id='ent_logging', version=4, score=0.9), NS(entry_id='ent_team', version=2, score=0.8)])
+    client.get_skill_version.return_value = version_content('Never log account numbers.')
     store = PlaybookStore(client, tmp_path / 'publication.json', skill_id='ent_team')
-    skill = store.retrieve('validate report rows')
-    assert (skill.name, skill.version, skill.instructions) == ('report-validation', 2, 'Use Decimal for amounts.')
-    client.get_skill_version.assert_called_once_with(skill_id='ent_team', version=2)
+    skill = store.retrieve('add logging to the payment handler', min_score=0.7)
+    assert (skill.version, skill.instructions) == (4, 'Never log account numbers.')
+    client.get_skill_version.assert_called_once_with(skill_id='ent_logging', version=4)
     with pytest.raises(ValueError, match='instructor'):
         store.publish(skill_folder(tmp_path))
 
 
 def test_unrelated_task_gets_no_team_skill(tmp_path):
     client = Mock()
-    client.search_skills.return_value = NS(matches=[NS(entry_id='ent_other', version=1, score=0.9)])
-    assert PlaybookStore(client, tmp_path / 'p.json', skill_id='ent_team').retrieve('write a haiku') is None
+    client.search_skills.return_value = NS(matches=[NS(entry_id='ent_team', version=1, score=0.55)])
+    assert PlaybookStore(client, tmp_path / 'p.json').retrieve('write a haiku', min_score=0.7) is None
 
 
-def test_retrieval_without_any_skill_names_the_setting(tmp_path):
-    with pytest.raises(ValueError, match='PLAYBOOK_SKILL_ID'):
-        PlaybookStore(Mock(), tmp_path / 'p.json').retrieve('validate report rows')
+def test_retrieval_needs_no_skill_id(tmp_path):
+    client = Mock()
+    client.search_skills.return_value = NS(matches=[NS(entry_id='ent_team', version=1, score=0.9)])
+    client.get_skill_version.return_value = version_content('Use Decimal for amounts.')
+    assert PlaybookStore(client, tmp_path / 'p.json').retrieve('validate report rows').version == 1
 
 
 def test_a_skill_below_the_relevance_threshold_is_not_used(tmp_path):
@@ -91,3 +94,23 @@ def test_approved_answers_that_fit_the_task_are_returned(tmp_path):
     assert [(a.question, a.answer, a.version) for a in answers] == [
         ('Can I use real customer data in test fixtures?', 'No. Use synthetic data.', 2)]
     assert client.search_faqs.call_args.kwargs['query'] == 'Can I put customer data in my fixtures?'
+
+
+def test_published_skills_are_listed_with_their_versions(tmp_path):
+    client = Mock()
+    client.list_skills.return_value = NS(skills=[
+        NS(entry_id='ent_a', publication=NS(version=2)), NS(entry_id='ent_draft', publication=None)])
+    client.get_skill_version.return_value = version_content('Use Decimal for amounts.')
+    skills = PlaybookStore(client, tmp_path / 'p.json').published_skills()
+    assert [(s.name, s.version) for s in skills] == [('report-validation', 2)]
+    client.get_skill_version.assert_called_once_with(skill_id='ent_a', version=2)
+
+
+def test_publishing_a_new_version_keeps_what_else_the_receipt_records(tmp_path):
+    client = Mock()
+    client.append_skill_version.return_value = NS(entry=NS(entry_id='ent_team'), version=NS(version=2))
+    receipt = tmp_path / 'publication.json'
+    receipt.write_text('{"entry_id": "ent_team", "version": 1, "digest": "old", "playbook_id": "pb_workshop"}')
+    PlaybookStore(client, receipt).publish(skill_folder(tmp_path, 'Validate report rows, version 2'))
+    saved = json.loads(receipt.read_text())
+    assert (saved['version'], saved['playbook_id']) == (2, 'pb_workshop')

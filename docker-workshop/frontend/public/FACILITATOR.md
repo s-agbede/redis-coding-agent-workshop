@@ -69,6 +69,16 @@ Your `agent.py` follows the same flags as the room: each section switches one on
 | How do changes roll out? | Agents retrieve the current published version, and its name and version appear in the request. |
 | What can we configure? | The Agent Memory panel's Store settings tab shows retention, extraction cadence, summarization and sensitive-data exclusions. |
 
+## Before the session: the workshop Playbook
+
+Create the workshop's own Playbook, **BofA Coding Agent Workshop**, with its skills (`skills/`) and FAQs (`faqs/faqs.json`), and a read-only key for attendees:
+
+```bash
+uv run --group iris python scripts/iris_preview_playbook.py
+```
+
+Safe to run again: a skill whose text changed gets a new version, and nothing else changes. The FAQs are labelled as workshop examples. The fixture-data FAQ is deliberately missing: you create it live through promotion in section 5.
+
 ## Before the session: Playbook promotion
 
 Point the Playbook's FAQ extraction at the workshop store, with a one-minute idle window, so proposals appear during the session:
@@ -77,7 +87,7 @@ Point the Playbook's FAQ extraction at the workshop store, with a one-minute idl
 uv run python scripts/iris_preview_extraction.py --idle-seconds 60
 ```
 
-It's idempotent. In **Proposals**, dismiss any left over from rehearsals so the room sees a clean inbox.
+It's idempotent. Playbook scans every 5 minutes (fixed), so a proposal appears within about 6 minutes of a session going quiet; attendees ask the fixture question at the end of section 4, well before the promotion beat. Expect noise too: extraction proposes most questions people asked (FizzBuzz, slugs). Dismiss a couple live, since that is why a person reviews, and accept the fixture one. In **Proposals**, dismiss any left over from rehearsals so the room sees a clean inbox.
 
 ## Reset the workshop state
 
@@ -87,7 +97,7 @@ To rehearse again from the start (flags off, `project/` as shipped, a new learne
 python3 scripts/prepare_workspace.py --reset . .workshop-memory
 ```
 
-Your previous `agent.py`, `project/` and identity move to `.workshop-memory/.backups/`. Earlier memories stay in Redis Agent Memory under the old owner ID and expire with the store's retention. Type `exit` in the terminal and start the agent again; no container restart is needed.
+Your previous `agent.py`, `project/` and identity move to `.workshop-memory/.backups/`. Type `exit` in the terminal and start the agent again; no container restart is needed. As it starts, it deletes the previous learner's long-term memories and sessions from Redis Agent Memory (it prints how many), so you begin from a completely new state. Playbook proposals already drafted from those sessions stay in the Proposals inbox; dismiss them there.
 
 ## If something goes wrong
 

@@ -1,4 +1,4 @@
-"""Point the preview Playbook's FAQ extraction at the workshop's Agent Memory store.
+"""Point the workshop Playbook's FAQ extraction at the workshop's Agent Memory store.
 
     uv run python scripts/iris_preview_extraction.py [--idle-seconds 60]
 
@@ -53,15 +53,30 @@ def wait_until_gone(bindings: str, binding_id: str, token: str) -> None:
     raise SystemExit(f'Binding {binding_id} is still being deleted; run this again shortly.')
 
 
+def pause_other_playbooks(token: str, store_id: str, keep: str) -> None:
+    """Pause other Playbooks' bindings to this store, so proposals land only in the workshop's Playbook."""
+    for playbook in call('GET', '/v1/playbooks', token)['playbooks']:
+        if playbook['playbookId'] == keep:
+            continue
+        path = f'/v1/playbooks/{playbook["playbookId"]}/extraction/bindings'
+        for binding in call('GET', path, token)['bindings']:
+            if binding['source']['storeId'] == store_id and binding['enabled']:
+                call('PATCH', f'{path}/{binding["bindingId"]}', token, {'expectedVersion': binding['version'], 'enabled': False})
+                print(f'Paused extraction into "{playbook["name"]}".')
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--idle-seconds', type=int, default=60,
                         help='How long a session must be idle before extraction reads it (60-86400).')
     args = parser.parse_args()
     token = (PREVIEW / 'operator.jwt').read_text().strip()
-    playbook_id = json.loads((PREVIEW / 'connections.json').read_text())['products']['playbook']['resource_id']
+    workshop = PREVIEW / 'workshop-playbook.json'  # from scripts/iris_preview_playbook.py
+    playbook_id = (json.loads(workshop.read_text())['playbook_id'] if workshop.exists()
+                   else json.loads((PREVIEW / 'connections.json').read_text())['products']['playbook']['resource_id'])
     store_id = json.loads((PREVIEW / 'workshop-memory.json').read_text())['store_id']
     bindings = f'/v1/playbooks/{playbook_id}/extraction/bindings'
+    pause_other_playbooks(token, store_id, playbook_id)
     job = {'type': 'faq', 'idleWindowSeconds': args.idle_seconds}
 
     for binding in call('GET', bindings, token)['bindings']:

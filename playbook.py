@@ -1,4 +1,4 @@
-"""Publish the team skill to Redis Agent Playbook, and retrieve it and approved answers for a task.
+"""Publish the team skill to Redis Agent Playbook, and retrieve the team knowledge that fits a task.
 
 The instructor publishes once. Attendees set PLAYBOOK_SKILL_ID to that entry and only read.
 """
@@ -48,25 +48,25 @@ class PlaybookStore:
         entry_id, version = created.entry.entry_id, created.version.version
         self.client.publish_skill(skill_id=entry_id, version=version)
         self.receipt_path.parent.mkdir(parents=True, exist_ok=True)
-        self.receipt_path.write_text(json.dumps({'entry_id': entry_id, 'version': version, 'digest': digest}))
+        self.receipt_path.write_text(json.dumps({**(receipt or {}), 'entry_id': entry_id, 'version': version, 'digest': digest}))
         return entry_id, version
 
-    def entry_id(self) -> str:
-        if self.skill_id:
-            return self.skill_id
-        if not self.receipt_path.exists():
-            raise ValueError('No team skill yet. Set PLAYBOOK_SKILL_ID, or publish it with /publish-skill.')
-        return json.loads(self.receipt_path.read_text())['entry_id']
-
     def retrieve(self, query: str, min_score: float = 0.0) -> PublishedSkill | None:
-        """Search the Playbook for this task; return the team skill if it scores at least min_score."""
-        entry_id = self.entry_id()
-        matches = self.client.search_skills(query=query, limit=20).matches
-        match = next((item for item in matches if item.entry_id == entry_id and (item.score or 0) >= min_score), None)
-        if match is None:
+        """The published team skill that best fits this task, if it scores at least min_score."""
+        matches = self.client.search_skills(query=query, limit=5).matches
+        best = max(matches, key=lambda item: item.score or 0, default=None)
+        if best is None or (best.score or 0) < min_score:
             return None
-        content = self.client.get_skill_version(skill_id=entry_id, version=match.version).content.payload.skill
-        return PublishedSkill(name=content.manifest.name, version=match.version, instructions=content.instructions)
+        return self._skill(best.entry_id, best.version)
+
+    def published_skills(self) -> list[PublishedSkill]:
+        """Every skill an agent can be given right now: each entry's published version."""
+        entries = self.client.list_skills(published=True, limit=50).skills
+        return [self._skill(entry.entry_id, entry.publication.version) for entry in entries if entry.publication]
+
+    def _skill(self, entry_id: str, version: int) -> PublishedSkill:
+        content = self.client.get_skill_version(skill_id=entry_id, version=version).content.payload.skill
+        return PublishedSkill(name=content.manifest.name, version=version, instructions=content.instructions)
 
     def answers(self, query: str, min_score: float = 0.0) -> list[TeamAnswer]:
         """Published FAQs that fit this task. Proposals only become FAQs once a person accepts and publishes them."""

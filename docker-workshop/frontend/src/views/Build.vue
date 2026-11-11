@@ -158,14 +158,14 @@ export default {
     },
     async resetWorkshop() {
       // Back to the starting point: flags off, project as shipped, a new learner identity.
-      if (!window.confirm('Reset the workshop? agent.py and project/ go back to how they started, and you start as a new learner. Your current files are kept in a backup folder.')) return
+      if (!window.confirm('Reset the workshop? agent.py and project/ go back to how they started, and you start as a new learner. Your memories and sessions are deleted from Agent Memory when the agent next starts. Your current files are kept in a backup folder.')) return
       this.resetting = true
       this.resetMessage = ''
       try {
         const response = await fetch('/api/workspace/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
         const result = await response.json()
         if (!response.ok) throw new Error(result.detail || `HTTP ${response.status}`)
-        this.resetMessage = `Workshop reset. In the terminal, type exit and start the agent again. Your previous files are in ${result.backup}.`
+        this.resetMessage = `Workshop reset. In the terminal, type exit and start the agent again: it deletes your previous memories and sessions as it starts. Your previous files are in ${result.backup}.`
         void this.loadGuideFiles()
       } catch (error) {
         this.resetMessage = `Could not reset the workshop: ${error.message}`

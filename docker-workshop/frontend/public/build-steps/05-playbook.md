@@ -20,7 +20,7 @@ Either way: an agent searches the Playbook with its task and gets only what's re
 
 Open the team's skill, `skills/report-validation/SKILL.md` (click it to open it in the editor). It's five rules: use `Decimal` for amounts, report every problem, write each error as `row <n>: <problem>`, and so on.
 
-The instructor runs `/publish-skill`. This is the one copy the whole room uses; your workspace already knows its ID and only needs read access. Run `/skills` to see it.
+The instructor runs `/publish-skill`. This is the one copy the whole room uses; your workspace only needs read access. The workshop's Playbook, **BofA Coding Agent Workshop**, also holds two more team skills, `safe-logging` and `unit-tests`, and four approved FAQs (on public AI tools, secrets, open-source licences and reviewing agent code). They are workshop examples, not real policy. Run `/skills` to see the skills.
 
 **Predict:** does publishing it put it into the agent's next request?
 
@@ -33,7 +33,7 @@ if PLAYBOOK:
     skill = services.playbook.retrieve(task, min_score=SKILL_MIN_SCORE)
 ```
 
-Playbook search always returns its closest skills, even for a task that has nothing to do with them, so the agent only uses one that scores at least `SKILL_MIN_SCORE` (0.7) for this task. `agent.py:132` then adds it to the request with its name and version, so you can always tell which procedure the agent followed.
+Playbook search always returns its closest skills, even for a task that has nothing to do with them, so the agent takes the best-fitting one only if it scores at least `SKILL_MIN_SCORE` (0.7) for this task. `agent.py:132` then adds it to the request with its name and version, so you can always tell which procedure the agent followed.
 
 Save, type `exit`, start again, and try two tasks:
 
@@ -81,7 +81,7 @@ Memory learned from *your* conversations for *you*. Promotion turns what *many* 
 /skills
 ```
 
-**Look for:** report-validation, with the same version as the instructor's screen.
+**Look for:** the team's three skills, each with its published version.
 
 **2.** In `agent.py:88`, switch the Playbook on:
 
@@ -119,7 +119,19 @@ Can I put real customer records in my test fixtures?
 
 **Look for:** *Team answer: …*, and "Approved team answers from Redis Agent Playbook" in `/view-context`.
 
-**Try your own:** ask something close to the procedure in different words, such as "How should I handle money amounts in a report?", and see whether it scores high enough.
+**Try your own:** each of these should pick a different piece of team knowledge. Check the terminal's *Team procedure* or *Team answer* line for each:
+
+```text
+What should I never put in a log message?
+```
+
+```text
+Write unit tests with pytest for a slug function.
+```
+
+```text
+Where should I keep the API key for this service?
+```
 
 ## Close: three sources in one request
 

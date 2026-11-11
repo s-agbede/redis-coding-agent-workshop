@@ -21,6 +21,12 @@ if [ -f "$WORKSHOP_MEMORY" ]; then
 fi
 export PLAYBOOK_DATA_PLANE_URL="$(_iris playbook url)" PLAYBOOK_PLAYBOOK_ID="$(_iris playbook resource_id)"
 export PLAYBOOK_API_KEY="$(_iris playbook api_key)"
+# The workshop's own Playbook (skills/ and faqs/), from scripts/iris_preview_playbook.py.
+WORKSHOP_PLAYBOOK="$PREVIEW/.demo/local/workshop-playbook.json"
+if [ -f "$WORKSHOP_PLAYBOOK" ]; then
+  export PLAYBOOK_PLAYBOOK_ID="$(python3 -c "import json; print(json.load(open('$WORKSHOP_PLAYBOOK'))['playbook_id'])")"
+  export PLAYBOOK_API_KEY="$(python3 -c "import json; print(json.load(open('$WORKSHOP_PLAYBOOK'))['api_key'])")"
+fi
 if [ "${1:-}" = "publish" ]; then
   # Publishing needs an operator credential; app keys can only read.
   (cd "$PREVIEW" && task token PRODUCT=playbook >/dev/null)

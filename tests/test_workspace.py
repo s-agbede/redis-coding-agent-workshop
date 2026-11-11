@@ -1,3 +1,4 @@
+import json
 """Rebuilds preserve the learner's agent and project."""
 from pathlib import Path
 from scripts.prepare_workspace import prepare_workspace, reset_workspace
@@ -45,3 +46,5 @@ def test_reset_restores_the_starting_point_and_keeps_a_backup(tmp_path: Path):
     assert (backup/'agent.py').read_text() == 'CAPTURE = True'
     assert (backup/'project/fizzbuzz.py').is_file() and (backup/'owner.json').is_file()
     assert not backup.is_relative_to(target/'project')
+    # The agent's next start deletes the previous learner's memories and sessions.
+    assert json.loads((target/'output/workshop/forget.json').read_text()) == {'owner': 'old'}

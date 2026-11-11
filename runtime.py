@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+import json
 import os
 from pathlib import Path
 from types import ModuleType
@@ -26,7 +27,7 @@ COMMANDS = {
     '/events': 'What Agent Memory stored for this session',
     '/memories': 'What Agent Memory learned about you',
     '/forget': 'Forget one of your memories: /forget <id>',
-    '/skills': 'The team procedure from Agent Playbook',
+    '/skills': 'The team skills published in Agent Playbook',
     '/publish-skill': 'Publish the team skill (instructor)',
     '/help': 'List the commands',
 }
@@ -52,6 +53,33 @@ def extraction_status(memory: Any, session_id: str, last_event_id: str) -> str:
     if response.status_code != 200:
         raise RuntimeError(f'Could not read extraction status: HTTP {response.status_code}')
     return 'up to date' if response.json().get('value') == last_event_id else 'pending'
+
+
+def forget_previous_learner(output: Path, memory: Any) -> str | None:
+    """After a workshop reset, delete the previous learner's memories and sessions from Agent Memory.
+
+    The reset records the old owner in output/forget.json; this runs on the next start, where
+    the Agent Memory connection exists. Only that owner's data is touched.
+    """
+    note = output / 'forget.json'
+    if not note.exists():
+        return None
+    if memory is None:
+        return "The previous learner's memories were not deleted: Agent Memory is not configured."
+    owner = json.loads(note.read_text())['owner']
+    deleted = 0
+    while True:  # search returns a page at a time; repeat until nothing is left
+        found = memory.search_long_term_memory(request={'text': 'anything', 'filter_': {'owner_id': {'eq': owner}}, 'limit': 100})
+        ids = [item.id for item in found.items]
+        if not ids:
+            break
+        memory.bulk_delete_long_term_memories(memory_ids=ids)
+        deleted += len(ids)
+    sessions = list(memory.list_sessions(filter_owner_id=owner).items)
+    for session_id in sessions:
+        memory.delete_session_memory(session_id=session_id)
+    note.unlink()
+    return f'Deleted {deleted} memories and {len(sessions)} sessions of the previous learner.'
 
 
 class Session(BaseModel):
@@ -306,11 +334,11 @@ class Workshop:
             entry_id, version = self.playbook_store().publish(Path(__file__).resolve().parent / 'skills/report-validation')
             print(f'Published report-validation as entry {entry_id}, version {version}.')
         elif name == '/skills':
-            skill = self.playbook_store().retrieve('Validate the rows of an incoming report')
-            if skill is None:
-                print('No published team skill found.')
-            else:
-                print(f'{skill.name}, version {skill.version}\n\n{skill.instructions}')
+            skills = self.playbook_store().published_skills()
+            for skill in skills:
+                summary = next((line for line in skill.instructions.splitlines() if line.startswith('- ')), '')
+                print(f'{skill.name}, version {skill.version}  {summary[2:90]}')
+            print('\nThe agent uses the one that fits the task.' if skills else 'No published team skills yet.')
         elif name == '/help':
             print(HELP)
         else:

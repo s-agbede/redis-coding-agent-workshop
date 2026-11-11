@@ -22,7 +22,7 @@ from redis_agent_playbook import Playbook
 
 from playbook import PlaybookStore
 import completion
-from runtime import COMMANDS, Workshop
+from runtime import COMMANDS, Workshop, forget_previous_learner
 
 
 def memory_store_id() -> str:
@@ -84,6 +84,9 @@ def main() -> int:
             ))
             playbook = PlaybookStore(sdk, args.output / 'publication.json',
                                      skill_id=os.environ.get('PLAYBOOK_SKILL_ID') or None)
+        reset_note = forget_previous_learner(args.output, memory)
+        if reset_note:
+            print(reset_note)
         app = Workshop(learner, client, memory, playbook, owner, args.project, args.output)
         print('Coding agent with memory. /help lists commands.')
         app.command('/status')

@@ -4,6 +4,7 @@
     python3 scripts/prepare_workspace.py --reset SOURCE WORKSPACE   # back to the workshop's starting point
 """
 from datetime import datetime
+import json
 from pathlib import Path
 import shutil
 import sys
@@ -34,16 +35,23 @@ def prepare_workspace(source: Path, workspace: Path) -> None:
 def reset_workspace(source: Path, workspace: Path) -> Path:
     """Move the learner's agent.py, project and identity into a backup, then start fresh.
 
-    Without its identity file the agent picks a new owner ID on its next start, so earlier
-    memories and sessions stay in Redis Agent Memory but no longer belong to this learner.
+    Without its identity file the agent picks a new owner ID on its next start. The previous
+    owner is recorded in output/workshop/forget.json, and that start deletes their memories and
+    sessions from Redis Agent Memory, so the workshop begins from a completely new state.
     """
     backup = workspace / '.backups' / datetime.now().strftime('reset-%Y%m%d-%H%M%S')
     backup.mkdir(parents=True)
+    owner_file = workspace / OWNER_FILE
+    previous = json.loads(owner_file.read_text()).get('owner') if owner_file.exists() else None
     for name in (*LEARNER_FILES, OWNER_FILE):
         current = workspace / name
         if current.exists():
             shutil.move(current, backup / Path(name).name)
     prepare_workspace(source, workspace)
+    if previous:
+        # The agent's next start deletes this learner's memories and sessions from Agent Memory.
+        owner_file.parent.mkdir(parents=True, exist_ok=True)
+        (owner_file.parent / 'forget.json').write_text(json.dumps({'owner': previous}))
     return backup
 
 

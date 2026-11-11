@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 from scripts.publish_docs import LESSONS, published_files
 
+import json
 ROOT=Path(__file__).resolve().parents[1]
 
 
@@ -60,3 +61,20 @@ def test_lesson_links_into_agent_py_name_real_places():
     for name in LESSONS:
         for anchor in re.findall(r'`agent\.py:([a-z]+)`', (ROOT/'docs/tasks'/name).read_text()):
             assert anchor in AGENT_ANCHORS, (name, anchor)
+
+
+def test_every_team_skill_has_a_name_and_a_description_playbook_can_parse():
+    for skill in sorted((ROOT / 'skills').glob('*/SKILL.md')):
+        _, frontmatter, body = skill.read_text().split('---', 2)
+        fields = dict(line.split(': ', 1) for line in frontmatter.strip().splitlines())
+        assert fields['name'] == skill.parent.name, skill
+        # Unquoted YAML: a second ": " makes the header invalid, and Playbook rejects the skill.
+        assert ': ' not in fields['description'], skill
+        assert body.strip(), skill
+
+
+def test_every_faq_has_a_question_an_answer_and_says_it_is_an_example():
+    faqs = json.loads((ROOT / 'faqs/faqs.json').read_text())
+    assert len({faq['key'] for faq in faqs}) == len(faqs)
+    for faq in faqs:
+        assert faq['question'].endswith('?') and '(Workshop example policy.)' in faq['answer'], faq['key']

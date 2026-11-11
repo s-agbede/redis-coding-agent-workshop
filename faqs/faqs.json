@@ -1,0 +1,26 @@
+[
+  {
+    "key": "external-ai-tools",
+    "question": "Can I paste source code into a public AI chat tool?",
+    "answer": "No. (Workshop example policy.) Source code and data go only to the approved internal model gateway. Public AI chat tools are not approved for code, logs or customer data.",
+    "intents": ["Use ChatGPT for code", "Paste code into an AI tool", "Is the public chatbot allowed for work?"]
+  },
+  {
+    "key": "secrets-in-code",
+    "question": "Where should API keys and other secrets be stored?",
+    "answer": "Never in code, config files or the repository. (Workshop example policy.) Load them at runtime from the approved secrets manager. If a secret is ever committed, rotate it immediately and report it, even if you removed the commit.",
+    "intents": ["Hardcode an API key", "Commit a password", "Where do credentials go?"]
+  },
+  {
+    "key": "open-source-licences",
+    "question": "Which open-source licences can I use in our code?",
+    "answer": "MIT, Apache-2.0 and BSD licences are pre-approved. (Workshop example policy.) Anything else, including GPL and code with no licence, needs a licence review before you add it.",
+    "intents": ["Can I add this library?", "GPL dependency", "Open-source approval"]
+  },
+  {
+    "key": "reviewing-agent-code",
+    "question": "Who reviews code that an AI coding agent wrote?",
+    "answer": "The same as any change. (Workshop example policy.) A second engineer reviews it in a pull request and CI must pass. The engineer who asked the agent is accountable for the code.",
+    "intents": ["Do agent changes need review?", "Merge AI-written code", "Who owns code an agent wrote?"]
+  }
+]
