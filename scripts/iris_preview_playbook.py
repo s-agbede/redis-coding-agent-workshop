@@ -82,7 +82,7 @@ def skill_text(folder: Path) -> tuple[str, str]:
 
 
 def publish_skills(sdk: Playbook) -> None:
-    existing = {item.entry_key: item for item in sdk.list_skills(limit=100).skills}
+    existing = {item.entry_key: item for item in sdk.list_skills(limit=100).items}
     for folder in sorted(p for p in (ROOT / 'skills').iterdir() if (p / 'SKILL.md').is_file()):
         if folder.name == TEAM_SKILL:
             entry, version = PlaybookStore(sdk, RECEIPT).publish(folder)
@@ -102,7 +102,7 @@ def publish_skills(sdk: Playbook) -> None:
 
 
 def publish_faqs(sdk: Playbook) -> None:
-    existing = {item.entry_key for item in sdk.list_faqs(limit=100).faqs}
+    existing = {item.entry_key for item in sdk.list_faqs(limit=100).items}
     for faq in json.loads((ROOT / 'faqs/faqs.json').read_text()):
         if faq['key'] in existing:
             print(f'FAQ {faq["key"]}: already there')

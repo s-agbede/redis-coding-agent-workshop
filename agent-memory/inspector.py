@@ -2,8 +2,9 @@
 
 Serves one page at /memory/ and a few JSON routes under /memory/api/. Sessions and memories
 come from the Agent Memory data plane, scoped to the workspace's owner. Store settings come
-from the Control Plane, which is only available when Agent Memory is self-hosted. Editing them
-is for the instructor: every attendee shares the store, so it is off unless INSPECTOR_ALLOW_EDITS=1.
+from the self-hosted Control Plane or a dated snapshot verified for the managed workshop store.
+Managed settings are read-only here; edit them in Redis Cloud. Self-hosted editing is for the
+instructor: every attendee shares the store, so it is off unless INSPECTOR_ALLOW_EDITS=1.
 """
 from __future__ import annotations
 
@@ -19,6 +20,8 @@ from redis_agent_memory import AgentMemory
 
 WORKSPACE = Path(os.environ.get('WORKSPACE_ROOT', '/workspace'))
 PAGE = Path(__file__).with_name('inspector.html').read_bytes()
+MANAGED_SETTINGS = Path(__file__).with_name('managed-settings.json')
+CONSOLE_URL = 'https://cloud.redis.io/#/agent-memory'
 # Only these store settings are shown; connection details and credentials never leave the server.
 SETTINGS = ('name', 'shortMemory', 'longTermMemory', 'extractionStrategy', 'extractionCadence',
             'summarization', 'customMemoryTypes', 'longTermMemoryExclusions')
@@ -85,13 +88,23 @@ def shown(stored: dict[str, Any]) -> dict[str, Any]:
 
 def settings() -> dict[str, Any]:
     if not os.environ.get('AGENT_MEMORY_CONTROL_PLANE_URL'):
-        return {'available': False, 'message': 'Store settings come from the Agent Memory Control Plane, '
-                                               'which is available when Agent Memory is self-hosted.'}
+        snapshot = json.loads(MANAGED_SETTINGS.read_text())
+        if (read_setting('AGENT_MEMORY_STORE_ID') == snapshot['storeId']
+                and os.environ.get('AGENT_MEMORY_URL', '').rstrip('/') == snapshot['endpoint']):
+            return {'available': True, 'editable': False, 'source': 'snapshot',
+                    'storeId': snapshot['storeId'], 'verifiedOn': snapshot['verifiedOn'],
+                    'consoleUrl': CONSOLE_URL,
+                    'settings': {key: value for key, value in snapshot['settings'].items() if key in SETTINGS}}
+        return {'available': False, 'consoleUrl': CONSOLE_URL,
+                'message': 'No verified settings snapshot is available for this store. '
+                           'Ask your instructor or store administrator to verify its settings in Redis Cloud.'}
     return shown(control_plane('GET'))
 
 
 def change(operation: dict[str, Any], applied: Any) -> dict[str, Any]:
     """Send one change, then confirm from a fresh read that the store really holds it."""
+    if not os.environ.get('AGENT_MEMORY_CONTROL_PLANE_URL'):
+        raise PermissionError('Managed settings are read-only here. Ask your instructor or store administrator to edit them in Redis Cloud.')
     if os.environ.get('INSPECTOR_ALLOW_EDITS') != '1':
         raise PermissionError('Editing store settings is switched off for this workspace (INSPECTOR_ALLOW_EDITS).')
     control_plane('PATCH', operation)
@@ -119,7 +132,7 @@ def update_prompt(type_name: str, prompt: str) -> dict[str, Any]:
 
 
 def sessions() -> dict[str, Any]:
-    return {'owner': owner(), 'sessions': memory().list_sessions(filter_owner_id=owner()).items}
+    return {'owner': owner(), 'sessions': [item.session_id for item in memory().list_sessions(owner_id=owner()).items]}
 
 
 EXTRACTION_BOOKMARK = 'custom_extracted_up_to_event_id_coding_preference'
@@ -127,17 +140,15 @@ EXTRACTION_BOOKMARK = 'custom_extracted_up_to_event_id_coding_preference'
 
 def extraction_bookmark(session_id: str) -> str | None:
     """The last event extraction has reached for coding_preference (an internal marker), or None."""
-    store = read_setting('AGENT_MEMORY_STORE_ID')
-    request = Request(f'{os.environ["AGENT_MEMORY_URL"]}/v1/stores/{store}/session-memory/{session_id}/properties/'
-                      f'{EXTRACTION_BOOKMARK}',
-                      headers={'Authorization': f'Bearer {os.environ.get("AGENT_MEMORY_API_KEY") or "none"}'})
-    try:
-        with urlopen(request, timeout=10) as response:
-            return json.loads(response.read()).get('value')
-    except HTTPError as error:
-        if error.code == 404:
-            return None
-        raise
+    # Use the same transport as session reads: the hosted edge rejects urllib's client.
+    config = memory().sdk_configuration
+    url = (f'{config.server_url}/v1/stores/{config.globals.store_id}/session-memory/'
+           f'{session_id}/properties/{EXTRACTION_BOOKMARK}')
+    response = config.client.get(url, headers={'Authorization': f'Bearer {config.security.api_key}'})
+    if response.status_code == 404:
+        return None
+    response.raise_for_status()
+    return response.json().get('value')
 
 
 def session(session_id: str) -> dict[str, Any]:
@@ -145,8 +156,12 @@ def session(session_id: str) -> dict[str, Any]:
     if stored.get('ownerId') != owner():
         raise PermissionError('That session belongs to someone else.')
     events = stored['events']
-    caught_up = bool(events) and extraction_bookmark(session_id) == events[-1].get('eventId')
-    return {'sessionId': session_id, 'extraction': 'up to date' if caught_up else 'pending', 'events': [
+    if str(memory().sdk_configuration.globals.store_id).startswith('st_'):
+        extraction = 'unavailable'  # GA has no public per-session extraction bookmark.
+    else:
+        caught_up = bool(events) and extraction_bookmark(session_id) == events[-1].get('eventId')
+        extraction = 'up to date' if caught_up else 'pending'
+    return {'sessionId': session_id, 'extraction': extraction, 'events': [
         {'role': event['role'], 'actor': event.get('actorId'), 'createdAt': event.get('createdAt'), 'text': text_of(event)}
         for event in events
     ]}
@@ -157,7 +172,7 @@ def memories() -> dict[str, Any]:
         'filter_': {'owner_id': {'eq': owner()}}, 'limit': 50,
     }).model_dump(mode='json', by_alias=True)['items']
     return {'owner': owner(), 'memories': [
-        {'id': item.get('id'), 'text': item['text'], 'type': item.get('memoryType'), 'createdAt': item.get('createdAt')}
+        {'id': item['memoryId'], 'text': item['text'], 'type': item.get('memoryType'), 'createdAt': item.get('createdAt')}
         for item in items
     ]}
 

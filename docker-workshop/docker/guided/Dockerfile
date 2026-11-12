@@ -36,7 +36,7 @@ COPY docs /opt/workshop/docs
 COPY tests /opt/workshop/tests
 COPY scripts /opt/workshop/scripts
 COPY scripts/prepare_workspace.py /opt/workshop/prepare_workspace.py
-COPY agent-memory/inspector.py agent-memory/inspector.html /opt/agent-memory/
+COPY agent-memory/inspector.py agent-memory/inspector.html agent-memory/managed-settings.json /opt/agent-memory/
 COPY docker-workshop/docker/guided/start.sh /start.sh
 COPY docker-workshop/docker/guided/tmux.conf /etc/tmux.conf
 RUN chmod +x /start.sh

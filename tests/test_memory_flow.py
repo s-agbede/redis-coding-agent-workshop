@@ -63,6 +63,7 @@ def test_each_flag_switches_on_only_its_own_step(tmp_path, capture, recall, play
         assert second['content'][0].text == 'Created the sample.'
     assert memory.search_long_term_memory.called == recall
     if recall:
+        assert memory.search_long_term_memory.call_args.kwargs['request']['query'] == 'Create a sample'
         assert memory.search_long_term_memory.call_args.kwargs['request']['filter_'] == {
             'owner_id': {'eq': 'learner'}, 'memory_type': {'eq': 'coding_preference'}}
     assert published.retrieve.called == playbook

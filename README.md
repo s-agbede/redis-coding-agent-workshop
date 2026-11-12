@@ -19,7 +19,9 @@ Type a task, or `/help` for commands; typing `/` shows suggestions as you type, 
 bash start.sh
 ```
 
-Open http://localhost:8080 for the instructions, editor and terminal side by side. The panel menu also has **Agent Memory** (this workspace's sessions, memories and store settings) and **Redis Insight**. To self-host Agent Memory instead of using the hosted service, see `docker-compose.selfhost.yml`. Stop it with `docker compose down`. Learner work lives in `.workshop-memory/` and survives restarts. See [browser setup](docker-workshop/README.md).
+Open http://localhost:8080 for the instructions, editor and terminal side by side. The panel menu also has **Agent Memory** (this workspace's sessions, memories and store settings) and **Redis Insight**. This revision uses the GA 1.1 Memory and Playbook SDKs. The legacy Memory 0.7 self-hosting recipe in `docker-compose.selfhost.yml` needs a service migration before it can be used with this revision. Stop it with `docker compose down`. Learner work lives in `.workshop-memory/` and survives restarts. See [browser setup](docker-workshop/README.md).
+
+**Upgrading an existing workspace:** startup preserves your learner `agent.py`. In Section 4's `search_long_term_memory` request, change `"text": task` to `"query": task` and keep your other edits. SDK 1.1 ignores the old `text` field. New workspaces already use `query`.
 
 ## What's here
 

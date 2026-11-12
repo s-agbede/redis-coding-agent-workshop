@@ -112,7 +112,7 @@ def handle(task: str, session: Any, services: Any) -> str | None:
     preferences: list[str] = []
     if RECALL:
         found = services.memory.search_long_term_memory(request={
-            "text": task,
+            "query": task,
             "filter_": {"owner_id": {"eq": session.owner}, "memory_type": {"eq": "coding_preference"}},
             "limit": 5,
         })

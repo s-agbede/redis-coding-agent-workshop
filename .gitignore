@@ -13,6 +13,7 @@ node_modules/
 dist/
 output/
 .playwright-cli/
+.playwright-mcp/
 *.log
 .DS_Store
 .claude/settings.local.json

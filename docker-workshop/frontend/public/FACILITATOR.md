@@ -4,20 +4,22 @@ Use the [schedule](/WORKSHOP.md) and the [presenter deck](https://claude.ai/arti
 
 ## Before the session
 
-1. **Services.** Redis Agent Memory and Redis Agent Playbook, reachable from the attendee workspaces.
+1. **Services.** Redis Agent Memory and Redis Agent Playbook, reachable from the attendee workspaces. Verify the custom `coding_preference` type and enabled extraction prompt from `agent-memory/store.json`; the application filters on this exact type. Managed services do not load this file automatically. Check the actual retention and exclusion settings before presenting them.
 2. **Publish the team skill.** On your machine, with a Playbook key that can publish and no `PLAYBOOK_SKILL_ID` set:
 
    ```bash
    uv run --group iris python main.py
    ```
 
-   Run `/publish-skill` and note the entry ID. Publishing again keeps the same ID.
-3. **Attendee workspaces.** Each gets the model settings (`AGENT_API_KEY`, `AGENT_MODEL`, optional `AGENT_BASE_URL`), the three `AGENT_MEMORY_*` settings, and the Playbook settings with a read-only key plus `PLAYBOOK_SKILL_ID` set to your entry ID.
+   Run `/publish-skill` and note the entry ID. Publishing again keeps the same ID only when using the same local publication receipt and Playbook. If the skills are already published, skip this step: `/skills` lists the serving inventory without needing a selected skill ID. Do not create a second report-validation entry from a fresh publisher workspace.
+3. **Attendee workspaces.** Each gets the model settings (`AGENT_API_KEY`, `AGENT_MODEL`, optional `AGENT_BASE_URL`), the three `AGENT_MEMORY_*` settings, and the shared Playbook settings with a read-only key. `PLAYBOOK_SKILL_ID` is optional for listing and retrieval. Keep publishing credentials in the instructor's environment. Leave `IRIS_OWNER_ID` unset in the lab template and give each lab a fresh workspace; do not copy a rehearsal's `output/workshop/owner.json`. Owner filters separate the workshop experience, not access permissions; use synthetic data. Attendees do not need Redis Cloud dashboard access.
 4. **Redis Insight** (panel menu → Redis Insight) shows the Iris preview's databases when you start the workbench with `bash scripts/workbench_with_iris_preview.sh`. For other Redis databases, set `INSIGHT_DB1_*` / `INSIGHT_DB2_*` (host, port, alias, password) in `.env`.
-5. **Optional: self-host Agent Memory.** With a license, add `AGENT_MEMORY_LICENSE_FILE` and `COMPOSE_FILE=docker-compose.yml:docker-compose.selfhost.yml` to `.env` and run `bash start.sh`. The workshop then uses a local Agent Memory 0.7 (server, worker, Control Plane, Redis 8). Redis Insight shows its database, and the Agent Memory panel's **Store settings** tab shows retention, extraction cadence, summarization and exclusions, which helps the governance discussion. The images are linux/amd64, so Apple Silicon runs them under emulation; rehearse the timing.
+5. **Legacy self-hosting recipe (not compatible with the current GA SDK).** Keep `docker-compose.selfhost.yml` disabled for this revision. It describes Memory 0.7 and requires a service migration before use. The current workshop uses managed GA services.
 6. **Rehearse** with real services, ideally with a few people on the same memory store.
 
-## Running Memory and Playbook yourself (Iris on-prem preview)
+## Legacy Memory and Playbook preview (requires migration)
+
+The current workshop pins the GA 1.1 SDKs. The older Preview and standalone Memory 0.7 routes are incompatible with these SDKs. The commands in this section are historical reference; migrate the services and rehearse before using them with this revision.
 
 Instead of the hosted services, the [Iris on-prem preview](https://github.com/redis-applied-ai/iris-onprem-preview) runs Agent Memory, Playbook, Lens and Context Gateway in a local Kubernetes cluster. It needs an Iris suite license (request it through the Iris license workflow) and suits rehearsal or a presenter demo; it listens on `127.0.0.1` only.
 
@@ -37,23 +39,34 @@ source scripts/use_iris_preview.sh            # attendee view: read-only app key
 export PLAYBOOK_SKILL_ID=ent_...              # the entry ID you just published
 ```
 
-The workshop's current SDK versions work with the preview. Recall filters on the custom `coding_preference` memory type, so the workshop needs its own store:
+Recall filters on the custom `coding_preference` memory type, so the workshop needs a store configured with that type:
 
 - `python3 scripts/iris_preview_store.py` creates the `coding-agent-workshop` store from `agent-memory/store.json` (with that type) and a key for it; `use_iris_preview.sh` then uses it.
 - The preview ships with custom extraction switched off. Set `"custom_extraction": {"enabled": True}` and add a `custom_extraction` strategy next to `instruct` under `promote_session_memory` in the preview's `scripts/local/config.py`, then `task up` again.
-- On a store without the type (for example the hosted one), remove the `memory_type` filter at `agent.py`'s Section 4 step, or recall finds nothing.
+- On a managed store, define and enable `coding_preference` in the Cloud console before the workshop. Keep the owner and type filters: removing the type filter can recall assistant-generated facts as personal preferences.
 
 `task down` deletes the cluster and its data.
+
+## Managed-service rehearsal prerequisites
+
+The current local workshop uses managed services. The Memory panel browses sessions and memories and shows a dated, read-only **Store settings** snapshot for the configured workshop store. The instructor verifies or edits live settings in Redis Cloud; attendees inspect the snapshot without dashboard access.
+
+When upgrading an existing browser workspace from the older SDK, startup preserves the learner's `agent.py` while updating dependencies. In its Section 4 search request, change `"text": task` to `"query": task`, preserving the other learner edits. SDK 1.1 ignores the old `text` field, which otherwise makes recall filter-only. Fresh workspaces already have the corrected field.
+
+- The dedicated GA `coding-agent-workshop` store on `sam-test-db` retains sessions for one day and long-term memories for seven days, with a 60-second extraction cadence. The old Preview store is preserved.
+- The GA store enables email redaction and the custom API-token drop detector from `agent-memory/store.json`. Email redaction was verified with a new synthetic session; raw session events still retain the email. Existing memories are not retroactively redacted. Use synthetic data throughout.
+- Three skills and five FAQs are published: the four repository FAQs plus the customer-fixture FAQ promoted from the GA rehearsal. Use the public-AI-tools FAQ and its paraphrase for the required attendee exercise.
+- Automatic FAQ extraction is enabled on the managed Playbook, using only the dedicated GA workshop store and a one-minute inactivity window. Promotion is an optional instructor demo requiring an extraction job, access to the source Memory store, and a rehearsed proposal. The customer-fixture proposal was extracted, edited, accepted as an unpublished draft, and published as v1; a paraphrase retrieves it. Its source session and event IDs appear under **Candidate source & metadata**, even when **Supporting evidence** shows zero. For a repeat live promotion, use a new question; the customer-fixture FAQ is already published. Do not enable it on a shared store without reviewing which conversations it can read. Do not claim the customer-data FAQ exists until it has been reviewed and published. The Cloud console calls the entry list **Registry**; the on-prem preview calls it **Entries**.
 
 ## Running it
 
 Your `agent.py` follows the same flags as the room: each section switches one on in `handle`'s file. After each change: save, `exit`, relaunch.
 
 - **Recap.** Model asks, Python runs the tool, the result goes back. Ask today's question.
-- **The amnesiac.** "By the way, I like Google-style docstrings on my functions." Ask for the slug function; it gets the docstring. `/new-session`, ask for the same slug function, `/view-context`: the preference is gone. Have the agent add it to `AGENTS.md`, start a new session, and ask again: it works every time. Then walk through what that costs (manual, applies to everyone, only grows, never expires) and name the three jobs: extraction, lifecycle, retrieval. Have the agent take the line back out.
-- **Capture.** Name Redis Agent Memory. Open Store settings in the Agent Memory panel first: retention, extraction, the `coding_preference` prompt, and the sensitive-data exclusions (email redacted, API tokens dropped). Set `CAPTURE = True` and walk through the two capture steps in `handle`. Restart, restate the preference, add "In test fixtures, use my email jane.doe@example.com as the sample address.", then `/events`. Then `/new-session`, `/sessions`, `/resume 1`: the whole conversation is back. Open the Agent Memory panel to show the same session in the service. Ask: do we want every old conversation in every request?
-- **Recall.** Open with `/memories`; the preference has been extracted. Set `RECALL = True`; walk through the search (owner and type, not session) and how the request adds what was found. Fresh session, the de-duplication function, `/view-context`. Point out the fixture memory with `[REDACTED]` in `/memories` and the raw email still in `/events`: exclusions protect long-term memory, not the session. Say "Actually, I've switched to NumPy-style docstrings.", explain retrieval while extraction runs, then `/memories`: one docstring memory, updated. Before **Forget**, check *Extraction: up to date* (`/events`, or the session in the panel): a pending run can re-learn it. Forget it in the panel; ask again: *Recalled: nothing*. Restate Google-style for the finale.
-- **Playbook.** Personal to organisational. Show `SKILL.md`, run `/publish-skill`, then `/skills`. Set `PLAYBOOK = True`; show FizzBuzz getting no team procedure and the report-rules question getting it (the `SKILL_MIN_SCORE` threshold). Then promotion: Iris console (http://localhost:18080) → Playbook → **Proposals**. Open the fixture-data proposal (everyone asked it at the end of section 4) and show its evidence. Rewrite the answer to the approved one ("No. Test fixtures must use synthetic data… Real customer data never goes into the repository, even masked."), **Accept as draft FAQ**, then publish it from **Entries**. The room asks it in their own words and sees *Team answer: …*.
+- **The amnesiac.** "By the way, I like Google-style docstrings on my functions." Ask for the slug function; it gets the docstring. `/new-session`, ask for the same slug function, `/view-context`: the preference is gone. Have the agent add it to `AGENTS.md`, start a new session, and ask again: the rule appears in the request; verify the output rather than promising a deterministic model response. Then walk through what that costs (manual, applies to everyone, only grows, never expires) and name the three jobs: extraction, lifecycle, retrieval. Have the agent take the line back out.
+- **Capture.** Name Redis Agent Memory. Open Agent Memory → Store settings. The managed workshop shows a dated, read-only snapshot; use the Redis Cloud dashboard link to verify or edit current settings. Show: retention, extraction, the `coding_preference` prompt, and the configured exclusions. Only promise email redaction and API-token dropping when those detectors are enabled and tested. Set `CAPTURE = True` and walk through the two capture steps in `handle`. Restart, restate the preference, add "In test fixtures, use my email jane.doe@example.com as the sample address.", then `/events`. Then `/new-session`, `/sessions`, `/resume 1`: the whole conversation is back. Open the Agent Memory panel to show the same session in the service. Ask: do we want every old conversation in every request?
+- **Recall.** Open with `/memories`; the preference has been extracted. Set `RECALL = True`; walk through the search (owner and type, not session) and how the request adds what was found. Fresh session, the de-duplication function, `/view-context`. Compare the fixture memory with the configured exclusions; with an enabled email detector it should be redacted. The Sessions panel retains the full raw email; `/events` prints previews. Exclusions apply to long-term memory, not the session. Say "Actually, I've switched to NumPy-style docstrings.", explain retrieval while extraction runs, then `/memories`: one `coding_preference` for docstrings, updated. Before **Forget**, stop sending messages and wait until `/memories` shows the correction: a pending run can re-learn it. GA does not expose the older per-session extraction bookmark. Forget its `coding_preference` in the panel, start a new session, and ask again: the deleted preference should be absent. Other coding preferences may still be recalled; the old conversation would otherwise still contain the correction. Restate Google-style for the finale.
+- **Playbook.** Personal to organisational. Show `SKILL.md`, then `/skills`. If demonstrating publishing, use the instructor's separate publishing environment and existing publication receipt; attendee workspaces stay read-only. Set `PLAYBOOK = True`; show FizzBuzz getting no team procedure and the report-rules question getting it (the `SKILL_MIN_SCORE` threshold). Use the prepublished public-AI-tools FAQ for the core exercise. Optional promotion, only after configuring and rehearsing it: Redis Cloud → Iris → Agent Playbooks → your Playbook → **Proposals**. Open a rehearsed proposal and inspect its source sessions and events; do not promise a nonzero supporting-evidence count. Rewrite its answer to the approved wording, accept it as an unpublished draft, then publish from **Registry**. The room asks it in their own words and sees *Team answer: …*. The customer-fixture FAQ is already published in the managed rehearsal, so use a new question for a fresh promotion demo.
 - **Close (2 minutes).** All three flags on, `/new-session`, then "Show me a function that validates the rows of a report." `/view-context`: `AGENTS.md`, the recalled preference and the team procedure in one request, each with its owner.
 - **Discussion.** Below.
 
@@ -67,19 +80,15 @@ Your `agent.py` follows the same flags as the room: each section switches one on
 | Who decides what becomes a team answer? | Extraction only proposes. A person edits and accepts a proposal, and publishing is a separate step; until then no agent sees it. |
 | Who approves a procedure? | Playbook separates creating a version from publishing it; only the publisher needs write access. |
 | How do changes roll out? | Agents retrieve the current published version, and its name and version appear in the request. |
-| What can we configure? | The Agent Memory panel's Store settings tab shows retention, extraction cadence, summarization and sensitive-data exclusions. |
+| What can we configure? | Attendees inspect the dated snapshot in the panel. Only the instructor or store administrator edits current settings in the Redis Cloud dashboard; attendees do not have dashboard access. |
 
 ## Before the session: the workshop Playbook
 
-Create the workshop's own Playbook, **BofA Coding Agent Workshop**, with its skills (`skills/`) and FAQs (`faqs/faqs.json`), and a read-only key for attendees:
+Use the existing managed workshop Playbook and verify its published skills and FAQs before the session. In Redis Cloud, the instructor manages content under **Registry** and credentials under **Iris → Access & Identity**. Attendee keys need only `read`; keep content authoring and publishing permissions on the instructor's separate key. The repository's `skills/` and `faqs/faqs.json` contain the starter content, labelled as workshop examples. The managed rehearsal also contains the published customer-fixture FAQ.
 
-```bash
-uv run --group iris python scripts/iris_preview_playbook.py
-```
+`scripts/iris_preview_playbook.py` provisions the legacy local preview. It is not a managed Cloud provisioning command and must not be used for the current deployment without migrating its service calls.
 
-Safe to run again: a skill whose text changed gets a new version, and nothing else changes. The FAQs are labelled as workshop examples. The fixture-data FAQ is deliberately missing: you create it live through promotion in section 5.
-
-## Before the session: Playbook promotion
+## Before the optional on-prem promotion demo
 
 Point the Playbook's FAQ extraction at the workshop store, with a one-minute idle window, so proposals appear during the session:
 
@@ -105,5 +114,9 @@ Your previous `agent.py`, `project/` and identity move to `.workshop-memory/.bac
 | --- | --- |
 | `/memories` is empty | Extraction takes up to a minute or two. Check the preference was said after capture was switched on. |
 | `/sessions` is empty | Sessions are only stored once capture is on. |
-| `/skills` says there's no team skill | That workspace is missing `PLAYBOOK_SKILL_ID`. |
+| `/skills` is empty | Check the configured Playbook ID, read access, and whether skills are published. `PLAYBOOK_SKILL_ID` is not required to list or retrieve them. |
 | `/skills` shows nothing for the task | The entry isn't published, or the ID is from another Playbook. |
+
+### Maintaining the managed settings snapshot
+
+`agent-memory/managed-settings.json` contains the non-secret settings verified in Redis Cloud on the recorded date. The inspector displays it only when both the configured endpoint and store ID match. It is read-only even when `INSPECTOR_ALLOW_EDITS` is enabled. After changing the Cloud configuration, verify the values, update the snapshot and its `verifiedOn` date, and rebuild the runtime image. For another store, verify its configuration before replacing the snapshot; never relabel the template as a live configuration. Self-hosted deployments with a configured Control Plane continue to read settings live.

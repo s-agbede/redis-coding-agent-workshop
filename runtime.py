@@ -45,6 +45,9 @@ EXTRACTION_BOOKMARK = 'custom_extracted_up_to_event_id_coding_preference'
 def extraction_status(memory: Any, session_id: str, last_event_id: str) -> str:
     """'up to date' once extraction has reached the session's last event, otherwise 'pending'."""
     config = memory.sdk_configuration
+    if str(config.globals.store_id).startswith('st_'):
+        # The GA API does not expose the Preview service's internal bookmark.
+        return 'not exposed by this service; check /memories'
     url = (f'{config.server_url}/v1/stores/{config.globals.store_id}/session-memory/'
            f'{session_id}/properties/{EXTRACTION_BOOKMARK}')
     response = config.client.get(url, headers={'Authorization': f'Bearer {config.security.api_key}'})
@@ -69,13 +72,13 @@ def forget_previous_learner(output: Path, memory: Any) -> str | None:
     owner = json.loads(note.read_text())['owner']
     deleted = 0
     while True:  # search returns a page at a time; repeat until nothing is left
-        found = memory.search_long_term_memory(request={'text': 'anything', 'filter_': {'owner_id': {'eq': owner}}, 'limit': 100})
-        ids = [item.id for item in found.items]
+        found = memory.search_long_term_memory(request={'filter_': {'owner_id': {'eq': owner}}, 'limit': 100})
+        ids = [item.memory_id for item in found.items]
         if not ids:
             break
         memory.bulk_delete_long_term_memories(memory_ids=ids)
         deleted += len(ids)
-    sessions = list(memory.list_sessions(filter_owner_id=owner).items)
+    sessions = [item.session_id for item in memory.list_sessions(owner_id=owner).items]
     for session_id in sessions:
         memory.delete_session_memory(session_id=session_id)
     note.unlink()
@@ -240,7 +243,7 @@ class Workshop:
         return session.model_dump(mode='json', by_alias=True)['events']
 
     def stored_sessions(self) -> list[str]:
-        return list(self.memory_client().list_sessions(filter_owner_id=self.state.owner).items)
+        return [item.session_id for item in self.memory_client().list_sessions(owner_id=self.state.owner).items]
 
     def find_session(self, reference: str) -> str:
         """A stored session, by its number in /sessions or by the start of its ID."""
@@ -316,7 +319,7 @@ class Workshop:
                 'limit': 50,
             }).model_dump(mode='json', by_alias=True)['items']
             for item in items:
-                print(f'- [{item["id"][:8]}] {item["text"]} ({item.get("memoryType", "?")})')
+                print(f'- [{item["memoryId"][:8]}] {item["text"]} ({item.get("memoryType", "?")})')
             if not items:
                 print('Nothing extracted yet. Extraction runs in the background; try again shortly.')
         elif name == '/forget':
@@ -325,10 +328,10 @@ class Workshop:
             items = self.memory_client().search_long_term_memory(request={
                 'filter_': {'owner_id': {'eq': self.state.owner}}, 'limit': 50,
             }).model_dump(mode='json', by_alias=True)['items']
-            match = next((item for item in items if item['id'].startswith(argument.strip())), None)
+            match = next((item for item in items if item['memoryId'].startswith(argument.strip())), None)
             if match is None:
                 raise ValueError(f'No memory of yours starts with {argument.strip()}. /memories lists them.')
-            self.memory_client().bulk_delete_long_term_memories(memory_ids=[match['id']])
+            self.memory_client().bulk_delete_long_term_memories(memory_ids=[match['memoryId']])
             print(f'Forgot: {match["text"]}')
         elif name == '/publish-skill':
             entry_id, version = self.playbook_store().publish(Path(__file__).resolve().parent / 'skills/report-validation')

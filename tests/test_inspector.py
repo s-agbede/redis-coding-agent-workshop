@@ -2,6 +2,7 @@
 import importlib.util
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
@@ -17,6 +18,9 @@ def inspector(tmp_path, monkeypatch):
     monkeypatch.setenv('WORKSPACE_ROOT', str(tmp_path))
     monkeypatch.delenv('IRIS_OWNER_ID', raising=False)
     monkeypatch.delenv('AGENT_MEMORY_CONTROL_PLANE_URL', raising=False)
+    monkeypatch.delenv('AGENT_MEMORY_URL', raising=False)
+    monkeypatch.delenv('AGENT_MEMORY_STORE_ID', raising=False)
+    monkeypatch.delenv('AGENT_MEMORY_STORE_ID_FILE', raising=False)
     spec = importlib.util.spec_from_file_location('inspector', ROOT / 'agent-memory/inspector.py')
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -27,12 +31,13 @@ def inspector(tmp_path, monkeypatch):
 
 def test_sessions_and_memories_are_filtered_by_the_workspace_owner(inspector):
     module, client = inspector
-    client.list_sessions.return_value.items = ['s1']
+    client.list_sessions.return_value.items = [SimpleNamespace(session_id='s1')]
     client.search_long_term_memory.return_value.model_dump.return_value = {'items': [
-        {'text': 'The user prefers Google-style docstrings.', 'memoryType': 'user_preference'}]}
+        {'memoryId': 'm1', 'text': 'The user prefers Google-style docstrings.', 'memoryType': 'user_preference'}]}
     assert module.sessions() == {'owner': 'learner-a', 'sessions': ['s1']}
-    client.list_sessions.assert_called_with(filter_owner_id='learner-a')
+    client.list_sessions.assert_called_with(owner_id='learner-a')
     assert module.memories()['memories'][0]['type'] == 'user_preference'
+    assert module.memories()['memories'][0]['id'] == 'm1'
     assert client.search_long_term_memory.call_args.kwargs['request']['filter_'] == {'owner_id': {'eq': 'learner-a'}}
 
 
@@ -43,8 +48,38 @@ def test_another_owners_session_is_refused(inspector):
         module.session('their-session')
 
 
-def test_store_settings_explain_they_need_self_hosting(inspector):
+def test_store_settings_without_a_verified_snapshot_link_to_cloud(inspector):
     module, _ = inspector
+    assert module.settings()['available'] is False
+    assert module.settings()['consoleUrl'] == 'https://cloud.redis.io/#/agent-memory'
+
+
+def test_managed_workshop_settings_are_a_dated_read_only_snapshot(inspector, monkeypatch):
+    module, _ = inspector
+    snapshot = json.loads((ROOT / 'agent-memory/managed-settings.json').read_text())
+    monkeypatch.setenv('AGENT_MEMORY_URL', snapshot['endpoint'] + '/')
+    monkeypatch.setenv('AGENT_MEMORY_STORE_ID', snapshot['storeId'])
+    monkeypatch.setenv('INSPECTOR_ALLOW_EDITS', '1')
+    result = module.settings()
+    assert result['available'] is True
+    assert result['editable'] is False
+    assert result['source'] == 'snapshot'
+    assert result['verifiedOn'] == '2026-11-12'
+    assert result['settings']['shortMemory']['ttlSeconds'] == 86400
+    assert result['settings']['longTermMemory']['ttlSeconds'] == 604800
+    assert result['settings']['customMemoryTypes'][0]['name'] == 'coding_preference'
+    assert 'endpoint' not in result
+    with pytest.raises(PermissionError, match='Redis Cloud'):
+        module.update_setting('summarization', {'enabled': True})
+
+
+@pytest.mark.parametrize('changed', ['AGENT_MEMORY_URL', 'AGENT_MEMORY_STORE_ID'])
+def test_snapshot_is_never_presented_as_another_stores_settings(inspector, monkeypatch, changed):
+    module, _ = inspector
+    snapshot = json.loads((ROOT / 'agent-memory/managed-settings.json').read_text())
+    monkeypatch.setenv('AGENT_MEMORY_URL', snapshot['endpoint'])
+    monkeypatch.setenv('AGENT_MEMORY_STORE_ID', snapshot['storeId'])
+    monkeypatch.setenv(changed, 'different-deployment')
     assert module.settings()['available'] is False
 
 
@@ -73,6 +108,7 @@ def test_store_settings_are_read_only_unless_editing_is_switched_on(inspector, m
 def test_an_edit_sends_only_that_setting_and_shows_what_the_store_now_holds(inspector, monkeypatch):
     module, _ = inspector
     monkeypatch.setenv('INSPECTOR_ALLOW_EDITS', '1')
+    monkeypatch.setenv('AGENT_MEMORY_CONTROL_PLANE_URL', 'http://control-plane.test')
     sent = []
     monkeypatch.setattr(module, 'control_plane', lambda method, body=None: sent.append((method, body)) or {
         'storeId': 's1', 'summarization': {'enabled': True}, 'adminSecret': 'never shown'})
@@ -86,6 +122,7 @@ def test_an_edit_sends_only_that_setting_and_shows_what_the_store_now_holds(insp
 def test_prompt_edits_use_the_strategy_operation_and_catch_silent_ignores(inspector, monkeypatch):
     module, _ = inspector
     monkeypatch.setenv('INSPECTOR_ALLOW_EDITS', '1')
+    monkeypatch.setenv('AGENT_MEMORY_CONTROL_PLANE_URL', 'http://control-plane.test')
     stored = {'storeId': 's1', 'customMemoryTypes': [{'name': 'coding_preference', 'extractionStrategy': {'prompt': 'old'}}]}
     sent = []
     monkeypatch.setattr(module, 'control_plane', lambda method, body=None: sent.append(body) or stored)
@@ -115,3 +152,47 @@ def test_a_session_says_whether_extraction_has_caught_up(inspector, monkeypatch)
     assert module.session('s1')['extraction'] == 'pending'
     monkeypatch.setattr(module, 'extraction_bookmark', lambda session_id: 'e2')
     assert module.session('s1')['extraction'] == 'up to date'
+
+
+def test_session_detail_reads_extraction_marker_through_sdk_transport(inspector, monkeypatch):
+    """The hosted edge rejects urllib's client; reuse the authenticated SDK transport."""
+    import httpx
+
+    module, client = inspector
+    client.get_session_memory.return_value.model_dump.return_value = {
+        'ownerId': 'learner-a',
+        'events': [{'eventId': 'e1', 'role': 'USER', 'content': [{'text': 'hello'}]}],
+    }
+    from urllib.error import HTTPError
+
+    monkeypatch.setenv('AGENT_MEMORY_URL', 'https://memory.example.test')
+    monkeypatch.setenv('AGENT_MEMORY_STORE_ID', 'store-1')
+    monkeypatch.setattr(module, 'urlopen', Mock(side_effect=HTTPError(
+        'https://memory.example.test', 403, 'Cloudflare error 1010', {}, None)))
+    config = client.sdk_configuration
+    config.server_url = 'https://memory.example.test'
+    config.globals.store_id = 'store-1'
+    config.security.api_key = 'test-key'
+    url = ('https://memory.example.test/v1/stores/store-1/session-memory/s1/properties/'
+           'custom_extracted_up_to_event_id_coding_preference')
+    config.client.get.return_value = httpx.Response(
+        404, request=httpx.Request('GET', url), json={'title': 'Property Not Found'},
+    )
+    result = module.session('s1')
+    assert result['events'][0]['text'] == 'hello'
+    assert result['extraction'] == 'pending'
+    config.client.get.assert_called_once_with(url, headers={'Authorization': 'Bearer test-key'})
+    config.client.get.return_value = httpx.Response(
+        200, request=httpx.Request('GET', url), json={'value': 'e1'},
+    )
+    assert module.session('s1')['extraction'] == 'up to date'
+
+
+def test_ga_session_does_not_report_missing_preview_marker_as_pending(inspector):
+    module, client = inspector
+    client.sdk_configuration.globals.store_id = 'st_workshop'
+    client.get_session_memory.return_value.model_dump.return_value = {
+        'ownerId': 'learner-a', 'events': [{'eventId': 'e1', 'role': 'USER', 'content': [{'text': 'hi'}]}],
+    }
+    assert module.session('s1')['extraction'] == 'unavailable'
+    client.sdk_configuration.client.get.assert_not_called()

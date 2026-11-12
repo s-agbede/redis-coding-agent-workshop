@@ -14,8 +14,8 @@ dependencies = [
 [dependency-groups]
 dev = ["pytest>=8.0"]
 iris = [
-    "redis-agent-memory>=0.4.1",
-    "redis-agent-playbook>=0.1.0b1",
+    "redis-agent-memory>=1.1.0,<2",
+    "redis-agent-playbook>=1.1.0,<2",
     "redis>=5.0",
     "prompt-toolkit>=3.0",
 ]

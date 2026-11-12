@@ -322,8 +322,8 @@ dev = [{ name = "pytest", specifier = ">=8.0" }]
 iris = [
     { name = "prompt-toolkit", specifier = ">=3.0" },
     { name = "redis", specifier = ">=5.0" },
-    { name = "redis-agent-memory", specifier = ">=0.4.1" },
-    { name = "redis-agent-playbook", specifier = ">=0.1.0b1" },
+    { name = "redis-agent-memory", specifier = ">=1.1.0,<2" },
+    { name = "redis-agent-playbook", specifier = ">=1.1.0,<2" },
 ]
 
 [[package]]
@@ -556,30 +556,30 @@ wheels = [
 
 [[package]]
 name = "redis-agent-memory"
-version = "0.4.1"
+version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpcore" },
     { name = "httpx" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e1/f6/c25f0e7de4e05378f427b9930d59bcf613ec0d3b4903b5f61fc846b7e042/redis_agent_memory-0.4.1.tar.gz", hash = "sha256:b379be6f64b7ca403036b6ce61018ab09216a4a33c5b9f3338bdc8c0db722a20", size = 74498, upload-time = "2026-09-16T07:34:10.814Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/89/22/5421c4fdf212e067a6b646f5664c8c48280f347045c0f729b8c7444ca98e/redis_agent_memory-1.1.0.tar.gz", hash = "sha256:2ed99daf0b8274b86bfe1025b161270981c4ad5dda336dcda151f92190c7bc72", size = 194999, upload-time = "2026-11-09T21:17:26.789Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0f/63/ac28db26af34226d0252fd8d3af2281b58494ee704887ddf1ef8851ce7f5/redis_agent_memory-0.4.1-py3-none-any.whl", hash = "sha256:898ed9f256ff50504e77ba664016c2306f183b01e690fb750e99143a39360c11", size = 145506, upload-time = "2026-09-16T07:34:09.571Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/c9/470d3275c886edcabdb08ebcbe1e39c667ce3b1cd3d3391b6a9d5c82783e/redis_agent_memory-1.1.0-py3-none-any.whl", hash = "sha256:b3a7a78b4211d74846c70adad09bb77de850aa334d12e7e27a9e297a9c59b34a", size = 426666, upload-time = "2026-11-09T21:17:25.294Z" },
 ]
 
 [[package]]
 name = "redis-agent-playbook"
-version = "0.1.0b1"
+version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpcore" },
     { name = "httpx" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7d/74/570fa9f33530d0437070c5e3fee3d801a0a83cf650a3b555103d00c030e0/redis_agent_playbook-0.1.0b1.tar.gz", hash = "sha256:a9296630962dec0a7e97cb2e2be9d23c66f3d283fc0d2e98222bd3fc89d80a7f", size = 156021, upload-time = "2026-10-21T14:57:07.841Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/54/96/e96086e4229a93a12661187169e79c0a007212ba7052efcf91e4c0b37bf6/redis_agent_playbook-1.1.0.tar.gz", hash = "sha256:ddddeb0dbd8acc8f6ec1f22cfa7e809d9d61dacb068d0f79f2930249ba4f2f53", size = 179696, upload-time = "2026-11-09T21:17:37.194Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d8/96/e56653a8098ac4c44a6ecc67a83c7ff74708026182360985f0c5ec9db7fa/redis_agent_playbook-0.1.0b1-py3-none-any.whl", hash = "sha256:f97a66d740ecf249b287a400c997758a5f1a0e13a3e3aa344e7d24e7ecc9ae21", size = 337825, upload-time = "2026-10-21T14:57:06.473Z" },
+    { url = "https://files.pythonhosted.org/packages/d3/65/df97533ed9129551ae6d91d051a22f400a99152c181ae53b61efdbe49561/redis_agent_playbook-1.1.0-py3-none-any.whl", hash = "sha256:a7ba5c245021f908ea3225baeb851650851716f405ae65cfd957831c23979878", size = 381583, upload-time = "2026-11-09T21:17:35.87Z" },
 ]
 
 [[package]]

@@ -51,7 +51,7 @@ def test_changed_skill_becomes_the_next_version_of_the_same_entry(tmp_path):
 
 def test_the_best_fitting_team_skill_is_retrieved_and_attendees_cannot_publish(tmp_path):
     client = Mock()
-    client.search_skills.return_value = NS(matches=[NS(entry_id='ent_logging', version=4, score=0.9), NS(entry_id='ent_team', version=2, score=0.8)])
+    client.search_skills.return_value = NS(items=[NS(entry_id='ent_logging', version=4, score=0.9), NS(entry_id='ent_team', version=2, score=0.8)])
     client.get_skill_version.return_value = version_content('Never log account numbers.')
     store = PlaybookStore(client, tmp_path / 'publication.json', skill_id='ent_team')
     skill = store.retrieve('add logging to the payment handler', min_score=0.7)
@@ -63,20 +63,20 @@ def test_the_best_fitting_team_skill_is_retrieved_and_attendees_cannot_publish(t
 
 def test_unrelated_task_gets_no_team_skill(tmp_path):
     client = Mock()
-    client.search_skills.return_value = NS(matches=[NS(entry_id='ent_team', version=1, score=0.55)])
+    client.search_skills.return_value = NS(items=[NS(entry_id='ent_team', version=1, score=0.55)])
     assert PlaybookStore(client, tmp_path / 'p.json').retrieve('write a haiku', min_score=0.7) is None
 
 
 def test_retrieval_needs_no_skill_id(tmp_path):
     client = Mock()
-    client.search_skills.return_value = NS(matches=[NS(entry_id='ent_team', version=1, score=0.9)])
+    client.search_skills.return_value = NS(items=[NS(entry_id='ent_team', version=1, score=0.9)])
     client.get_skill_version.return_value = version_content('Use Decimal for amounts.')
     assert PlaybookStore(client, tmp_path / 'p.json').retrieve('validate report rows').version == 1
 
 
 def test_a_skill_below_the_relevance_threshold_is_not_used(tmp_path):
     client = Mock()
-    client.search_skills.return_value = NS(matches=[NS(entry_id='ent_team', version=3, score=0.57)])
+    client.search_skills.return_value = NS(items=[NS(entry_id='ent_team', version=3, score=0.57)])
     store = PlaybookStore(client, tmp_path / 'p.json', skill_id='ent_team')
     assert store.retrieve('write a fizzbuzz function', min_score=0.7) is None
     client.get_skill_version.return_value = version_content('Use Decimal for amounts.')
@@ -85,7 +85,7 @@ def test_a_skill_below_the_relevance_threshold_is_not_used(tmp_path):
 
 def test_approved_answers_that_fit_the_task_are_returned(tmp_path):
     client = Mock()
-    client.search_faqs.return_value = NS(matches=[
+    client.search_faqs.return_value = NS(items=[
         NS(version=2, score=0.91, faq=NS(question='Can I use real customer data in test fixtures?', answer='No. Use synthetic data.')),
         NS(version=1, score=0.66, faq=NS(question='Why does one order have several tracking numbers?', answer='It ships in parts.')),
     ])
@@ -98,7 +98,7 @@ def test_approved_answers_that_fit_the_task_are_returned(tmp_path):
 
 def test_published_skills_are_listed_with_their_versions(tmp_path):
     client = Mock()
-    client.list_skills.return_value = NS(skills=[
+    client.list_skills.return_value = NS(items=[
         NS(entry_id='ent_a', publication=NS(version=2)), NS(entry_id='ent_draft', publication=None)])
     client.get_skill_version.return_value = version_content('Use Decimal for amounts.')
     skills = PlaybookStore(client, tmp_path / 'p.json').published_skills()
@@ -114,3 +114,17 @@ def test_publishing_a_new_version_keeps_what_else_the_receipt_records(tmp_path):
     PlaybookStore(client, receipt).publish(skill_folder(tmp_path, 'Validate report rows, version 2'))
     saved = json.loads(receipt.read_text())
     assert (saved['version'], saved['playbook_id']) == (2, 'pb_workshop')
+
+
+def test_empty_published_content_uses_real_sdk_response_models(tmp_path):
+    from redis_agent_playbook.models import (
+        ListSkillsResponseContent, SearchSkillsResponseContent, SearchFaqsResponseContent,
+    )
+    client = Mock()
+    client.list_skills.return_value = ListSkillsResponseContent(items=[])
+    client.search_skills.return_value = SearchSkillsResponseContent(items=[])
+    client.search_faqs.return_value = SearchFaqsResponseContent(items=[])
+    store = PlaybookStore(client, tmp_path / 'publication.json')
+    assert store.published_skills() == []
+    assert store.retrieve('report validation', min_score=0.7) is None
+    assert store.answers('API key storage', min_score=0.75) == []

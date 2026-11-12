@@ -53,7 +53,7 @@ class PlaybookStore:
 
     def retrieve(self, query: str, min_score: float = 0.0) -> PublishedSkill | None:
         """The published team skill that best fits this task, if it scores at least min_score."""
-        matches = self.client.search_skills(query=query, limit=5).matches
+        matches = self.client.search_skills(query=query, limit=5).items
         best = max(matches, key=lambda item: item.score or 0, default=None)
         if best is None or (best.score or 0) < min_score:
             return None
@@ -61,7 +61,7 @@ class PlaybookStore:
 
     def published_skills(self) -> list[PublishedSkill]:
         """Every skill an agent can be given right now: each entry's published version."""
-        entries = self.client.list_skills(published=True, limit=50).skills
+        entries = self.client.list_skills(published=True, limit=50).items
         return [self._skill(entry.entry_id, entry.publication.version) for entry in entries if entry.publication]
 
     def _skill(self, entry_id: str, version: int) -> PublishedSkill:
@@ -70,6 +70,6 @@ class PlaybookStore:
 
     def answers(self, query: str, min_score: float = 0.0) -> list[TeamAnswer]:
         """Published FAQs that fit this task. Proposals only become FAQs once a person accepts and publishes them."""
-        matches = self.client.search_faqs(query=query, limit=3).matches
+        matches = self.client.search_faqs(query=query, limit=3).items
         return [TeamAnswer(question=item.faq.question, answer=item.faq.answer, version=item.version)
                 for item in matches if (item.score or 0) >= min_score]

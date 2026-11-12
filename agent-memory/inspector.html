@@ -17,6 +17,10 @@
   .refresh:hover, nav button:hover { color:var(--text); }
   main { padding:16px; }
   .note { color:var(--muted); }
+  a { color:var(--blue); }
+  .settings-summary { font-size:16px; margin:0; }
+  details { margin-top:8px; }
+  summary { color:var(--muted); cursor:pointer; }
   .error { color:var(--accent); }
   .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:10px; }
   .meta { color:var(--muted); font-size:12px; margin-top:4px; }
@@ -108,8 +112,9 @@ async function showSession(id) {
     const back = el('button', 'refresh', '← All sessions');
     back.onclick = () => render('sessions');
     // Wait for "up to date" before pressing Forget: a pending run could learn the preference again.
-    const status = el('p', 'extraction ' + (extraction === 'pending' ? 'pending' : 'done'),
-      extraction === 'pending' ? 'Extraction: pending, runs within about a minute of the last message'
+    const status = el('p', 'extraction ' + (extraction === 'up to date' ? 'done' : 'pending'),
+      extraction === 'unavailable' ? 'Extraction status is not exposed by this service. Check Long-term memories for results.'
+      : extraction === 'pending' ? 'Extraction: pending, runs within about a minute of the last message'
                                : 'Extraction: up to date');
     view.replaceChildren(back, el('p', 'meta', 'Session ' + id), status);
     for (const event of events) {
@@ -194,22 +199,61 @@ function addTypeForm(onSaved) {
   return box;
 }
 
+function cloudSettingsLink() {
+  const note = el('p', 'note', 'Attendees can inspect this view but do not have dashboard access. Ask your instructor about changes. Your instructor or store administrator manages settings in the ');
+  const link = el('a', '', 'Redis Cloud dashboard (instructor/admin only)');
+  link.href = 'https://cloud.redis.io/#/agent-memory';
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  note.append(link, document.createTextNode('. Changes apply to everyone using this store.'));
+  return note;
+}
+
+const SETTING_LABELS = { name: 'Store name', shortMemory: 'Session retention', longTermMemory: 'Long-term retention',
+  extractionCadence: 'Extraction cadence', summarization: 'Session summarization',
+  customMemoryTypes: 'Custom memory types', longTermMemoryExclusions: 'Sensitive-data exclusions' };
+
+function settingSummary(name, value) {
+  if (['shortMemory', 'longTermMemory'].includes(name) && value?.ttlSeconds > 0) {
+    const days = value.ttlSeconds / 86400;
+    return `${days} ${days === 1 ? 'day' : 'days'}`;
+  }
+  if (name === 'extractionCadence' && value?.activeIntervalSeconds) return `Every ${value.activeIntervalSeconds} seconds`;
+  if (name === 'summarization') return value?.enabled ? 'Enabled' : 'Disabled';
+  return null;
+}
+
 function drawSettings(result, notice) {
-  view.replaceChildren(el('p', 'meta', 'Store ' + result.storeId + ', read live from the Control Plane'
-    + (result.editable ? '. Changes apply to everyone using this store.' : '. Read only.')));
+  const snapshot = result.source === 'snapshot';
+  view.replaceChildren(el('p', 'meta', 'Store ' + result.storeId));
+  if (snapshot) {
+    view.append(el('p', 'note', 'Verified configuration snapshot · ' + result.verifiedOn
+      + '. Read only. This is not a live read; dashboard changes are not automatically reflected here.'), cloudSettingsLink());
+  } else {
+    view.append(el('p', 'note', 'Read live from the Control Plane.'
+      + (result.editable ? ' Changes apply to everyone using this store.' : ' Read only.')));
+  }
   if (notice) view.append(el('p', 'note', notice));
   const redraw = saved => drawSettings(saved, 'Saved. Showing the settings the Control Plane now holds.');
   for (const [name, value] of Object.entries(result.settings)) {
     const card = el('div', 'card');
     const head = el('div', 'head');
-    head.append(el('div', 'role', name));
+    head.append(el('div', 'role', SETTING_LABELS[name] || name));
     const body = el('pre', '', typeof value === 'string' ? value : JSON.stringify(value, null, 2));
     if (result.editable && EDITABLE.includes(name)) {
       const edit = el('button', 'refresh', 'Edit');
       edit.onclick = () => body.replaceWith(editor(name, value, redraw));
       head.append(edit);
     }
-    card.append(head, body);
+    card.append(head);
+    const summary = settingSummary(name, value);
+    if (summary && !result.editable) {
+      const details = el('details');
+      details.append(el('summary', '', 'Configuration details'), body);
+      card.append(el('p', 'settings-summary', summary), details);
+    } else {
+      card.append(body);
+    }
     if (result.editable && name === 'customMemoryTypes') {
       const types = Array.isArray(value) ? value : [];
       types.forEach((_, index) => card.append(promptEditor(types, index, redraw)));
@@ -221,7 +265,7 @@ function drawSettings(result, notice) {
 
 async function showSettings() {
   const result = await get('settings');
-  if (!result.available) return view.append(el('p', 'note', result.message));
+  if (!result.available) return view.append(el('p', 'note', result.message), cloudSettingsLink());
   drawSettings(result);
 }
 

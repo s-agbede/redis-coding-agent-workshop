@@ -1,6 +1,6 @@
 <section id="promotion" data-transition="fade" style="background:#F5F3EE;color:#0B1B24;font-family:'Space Grotesk', Arial, sans-serif;padding:128px;display:flex;flex-direction:column;gap:48px">
 <div style="display:flex;flex-direction:column;gap:16px">
-<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#2457B8">04 · Promotion</p>
+<p style="font-size:24px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#2457B8">04 · Optional instructor demo</p>
 <h2 style="font-size:72px;font-weight:600;line-height:1.1;letter-spacing:-1px">From many conversations to one approved answer</h2>
 </div>
 <div style="display:flex;align-items:stretch;gap:16px">
@@ -14,6 +14,6 @@
 </div>
 <div style="flex:1"></div>
 <p style="font-size:44px;font-weight:600;line-height:1.2">Memory learns for you. Promotion turns what many asked into what the team approved.</p>
-<p style="font-size:28px;color:#4A5560">Nothing reaches anyone’s agent until a person publishes it.</p>
-<aside>Iris console (localhost:18080) → Playbook → Proposals. Open the fixture proposal and show its evidence count: one per session that asked. Edit the answer to the approved wording (synthetic data only, never real customer records, even masked), Accept as draft FAQ, then publish it from Entries. Have the room ask the question in their own words: “Team answer: …”. For a bank this is the governance story: extraction proposes, a person approves.</aside>
+<p style="font-size:28px;color:#4A5560">Requires a configured extraction job. Otherwise use a published FAQ.</p>
+<aside>Only run this instructor demo with a rehearsed extraction job; the required attendee exercise uses the published public-AI-tools FAQ. The managed rehearsal has extraction configured and its customer-fixture FAQ is already published, so use a new question for a fresh demo. In Redis Cloud: Iris → Agent Playbooks → your Playbook → Proposals. Inspect the proposal’s source sessions and events; supporting evidence may show zero, so do not promise a count. Edit the answer to the approved wording, accept it as an unpublished draft, then publish from Registry. Attendees need no dashboard access and keep read-only Playbook keys. Have the room ask the question in their own words: “Team answer: …”. Extraction proposes, a person approves.</aside>
 </section>

@@ -17,14 +17,16 @@ Redis Agent Memory keeps two kinds of memory:
 
 ## Demo: how the memory is set up
 
-Before using it, look at what it's set up to keep. Open the **Agent Memory** panel (panel menu, top left) and choose **Store settings**:
+Open **Agent Memory → Store settings** in the workshop. This workshop uses managed Redis Agent Memory, and the tab shows a **read-only configuration snapshot**, with the date it was verified. **Attendees do not have dashboard access**; everything you need to inspect for this exercise is shown in the workshop. Ask your instructor about configuration changes. Only the instructor or store administrator manages the current settings in the Redis Cloud dashboard. Dashboard changes are not automatically reflected in the snapshot.
+
+The workshop store was verified with the following settings:
 
 - **Lifecycle:** sessions are kept for a day, long-term memories for a week. Nobody has to remember to clean up.
 - **Extraction cadence:** it runs about every minute while a session is active.
 - **`coding_preference`:** a memory type the workshop defined, with a prompt that tells extraction to keep only what *you* say about how you want code written, and to ignore what the assistant did. This is the "deciding what's worth keeping" job, written once for everyone instead of by each person.
 - **`longTermMemoryExclusions`:** what must never be kept. Every memory is screened before it's stored long-term: an email address is **redacted**, and anything that looks like an API token (`ghp_…`, `sk_…`) **drops** the whole memory. Built-in detectors also cover card numbers, IP addresses, phone numbers and US Social Security numbers, and you can add your own as a regex or as a plain-language rule.
 
-These are store settings, not code: whoever runs the store decides what it learns and how long it keeps it.
+These are store settings, not code: whoever runs the store decides what it learns and how long it keeps it. The dedicated GA workshop store uses one-day sessions, seven-day long-term memories, and a 60-second extraction cadence. Its `coding_preference` type, email redaction, and API-token detector are enabled. Managed stores do not automatically load the repository template; verify these settings for each deployment.
 
 ## Demo: switch on capture
 
@@ -40,13 +42,13 @@ if CAPTURE:
 
 Then, after the agent answers, `agent.py:answer` records the answer the same way, with the `ASSISTANT` role. The role matters: the memory should learn *your* preferences, not the model's suggestions.
 
-Save, type `exit`, start the agent again, then mention the docstring preference and ask for the slug function. Mention one thing that should *not* be kept, too:
+Save, type `exit`, start the agent again, then mention the docstring preference and ask for the slug function. Use this synthetic address to check the configured exclusions (never use a real address):
 
 ```text
 In test fixtures, use my email jane.doe@example.com as the sample address.
 ```
 
-- `/events` shows both messages and both answers, stored for this session.
+- `/events` shows the first 150 characters of each stored message and answer. The **Sessions** tab shows their full text.
 - `/new-session`, then `/sessions`: the earlier session is listed. `/resume 1` (its number in the list) brings the whole conversation back, because Redis Agent Memory kept it.
 
 Resuming replays everything, though, which is the "everything in every request" problem again. You want just the bits that matter. Run `/memories`: it may still be empty, because extraction runs in the background. We come back to it in the next section.
@@ -65,7 +67,7 @@ Save, type `exit` in the terminal, then start the agent again:
 uv run --group iris python main.py
 ```
 
-**2.** State your preference, mention something that shouldn't be kept, and ask for the slug function:
+**2.** State your preference, use the synthetic email example to inspect exclusions, and ask for the slug function:
 
 ```text
 By the way, I like Google-style docstrings on my functions.
@@ -85,7 +87,7 @@ Show me a quick function that turns a title into a URL slug.
 /events
 ```
 
-**Look for:** your messages and the agent's answers, word for word.
+**Look for:** previews of your messages and the agent's answers. Open the session in the **Agent Memory** panel for the full text.
 
 **4.** Start fresh, list your sessions, and bring the first one back:
 

@@ -20,13 +20,13 @@ Either way: an agent searches the Playbook with its task and gets only what's re
 
 Open the team's skill, `skills/report-validation/SKILL.md` (click it to open it in the editor). It's five rules: use `Decimal` for amounts, report every problem, write each error as `row <n>: <problem>`, and so on.
 
-The instructor runs `/publish-skill`. This is the one copy the whole room uses; your workspace only needs read access. The workshop's Playbook, **BofA Coding Agent Workshop**, also holds two more team skills, `safe-logging` and `unit-tests`, and four approved FAQs (on public AI tools, secrets, open-source licences and reviewing agent code). They are workshop examples, not real policy. Run `/skills` to see the skills.
+The instructor publishes the skill before the session. `/publish-skill` is an instructor command that uses a local publication receipt; only reuse it with the same publisher workspace and Playbook. If the skills are already published, skip this command and inspect `/skills`. Attendees only need read access. The configured workshop Playbook also holds two more team skills, `safe-logging` and `unit-tests`, and four approved FAQs (on public AI tools, secrets, open-source licences and reviewing agent code). They are workshop examples, not real policy. Run `/skills` to see the skills.
 
 **Predict:** does publishing it put it into the agent's next request?
 
 ## Demo: switch on Playbook
 
-No: the agent has to retrieve it. In `agent.py:88`, set `PLAYBOOK = True`. That turns on `agent.py:90`:
+No: the agent has to retrieve it. In `agent.py:88`, set `PLAYBOOK = True`. That turns on `agent.py:122`:
 
 ```python
 if PLAYBOOK:
@@ -49,7 +49,9 @@ What are our rules for validating report rows?
 
 This time it says *Team procedure: report-validation, version 1*, and `/view-context` shows the procedure in the second message.
 
-## Demo: from conversations to a team answer
+## Optional instructor demo: from conversations to a team answer
+
+**Prerequisite:** the instructor has configured automatic FAQ extraction from this workshop's Memory store and verified a proposal appears. The dedicated GA workshop service has this configured, and its customer-data FAQ has already been promoted and published alongside the four original FAQs. Use a new question to demonstrate promotion again. For another deployment, verify the extraction job first; without it, skip this demo and use the published FAQ exercise below.
 
 Skills are written on purpose. Many team answers start as questions people keep asking their agents. Earlier, everyone asked:
 
@@ -61,9 +63,9 @@ Each agent answered in its own words, and none of those answers is approved. Red
 
 1. **Extraction:** Playbook reads finished sessions from Redis Agent Memory and drafts an FAQ **proposal**. The instructor opens the Iris console, **Playbook → Proposals**: one proposal, with the sessions it came from as **evidence**. The more people asked, the more evidence it has.
 2. **Review:** the drafted answer is whatever the agents said. The instructor rewrites it to the approved answer, then chooses **Accept as draft FAQ**. It's now an FAQ entry, but **unpublished**: no agent gets it yet.
-3. **Publish:** in **Entries**, the instructor publishes it. From now on every agent gets the same answer, with its version.
+3. **Publish:** in **Registry** (called **Entries** in the on-prem preview), the instructor publishes it. From now on every agent gets the same answer, with its version.
 
-With `PLAYBOOK` on, `agent.py:90` also searches the published FAQs, and uses only those that score at least `FAQ_MIN_SCORE` (0.75) for this task. Ask it again, in your own words:
+With `PLAYBOOK` on, `agent.py:122` also searches the published FAQs, and uses only those that score at least `FAQ_MIN_SCORE` (0.75) for this task. Ask it again, in your own words:
 
 ```text
 Can I put real customer records in my test fixtures?
@@ -111,11 +113,19 @@ What are our rules for validating report rows?
 
 **Look for:** *Team procedure: report-validation*, and the procedure in `/view-context`.
 
-**5.** Once the instructor has published the team answer, ask the fixture question in your own words:
+**5.** Retrieve one of the FAQs already published for this workshop:
 
 ```text
-Can I put real customer records in my test fixtures?
+Can I paste source code into a public AI chat tool?
 ```
+
+Then try the paraphrase:
+
+```text
+Is the public chatbot allowed for work?
+```
+
+If the instructor completed the optional promotion demo, also try `Can I put real customer records in my test fixtures?`. That question only has an approved team answer after its FAQ is published.
 
 **Look for:** *Team answer: …*, and "Approved team answers from Redis Agent Playbook" in `/view-context`.
 
@@ -150,3 +160,7 @@ Show me a function that validates the rows of a report.
 | "Team procedure from Redis Agent Playbook" | Redis Agent Playbook | The organisation |
 
 **Discussion:** pick one of each from your own team. Who should be able to read a memory? How would you correct or delete one? Who approves publishing a procedure or an answer?
+
+### Repeating the promotion demo
+
+The dedicated GA rehearsal has already promoted and published the customer-fixture FAQ. To show a new proposal live, use a new workshop question. In Redis Cloud, **Candidate source & metadata** contains the originating Memory store, session and event IDs; **Supporting evidence** may show zero for an extracted proposal. Accepting a draft does not make it retrievable: publish it from **Registry** first.

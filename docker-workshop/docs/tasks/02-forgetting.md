@@ -20,7 +20,7 @@ Now run `/new-session` and ask for **the same function again**.
 
 **Predict:** will the docstring look the same?
 
-It won't: you'll get no docstring, or a loose one without `Args:` and `Returns:`. Run `/view-context` to see why. The request holds the system prompt, `AGENTS.md` and your message, and nothing about docstrings. The model didn't forget; the application simply stopped sending it.
+It may differ: the model can still choose Google-style on its own, so the output style alone is not proof of memory. Run `/view-context` to see why. The request holds the system prompt, `AGENTS.md` and your message, and nothing about docstrings. The model didn't forget; the application simply stopped sending it.
 
 ## Demo: write it down
 
@@ -30,7 +30,7 @@ The obvious fix is to write it where every session will see it:
 Add to AGENTS.md that I like Google-style docstrings on my functions.
 ```
 
-Run `/new-session`, ask for the slug function again, and it works: Google-style, every session, every time. `/view-context` shows why: the rule is in the first message, because `AGENTS.md` is reloaded into every session.
+Run `/new-session`, ask for the slug function again, and it works: the Google-style instruction is present in every new session. Check whether the model follows it. `/view-context` shows why: the rule is in the first message, because `AGENTS.md` is reloaded into every session.
 
 ## What writing it down costs
 
@@ -69,7 +69,7 @@ Show me a quick function that turns a title into a URL slug.
 /new-session
 ```
 
-**Look for:** no Google-style docstring, and nothing about docstrings in `/view-context`.
+**Look for:** nothing about your docstring preference in `/view-context`. The model may still choose the same style by chance.
 
 **3.** Write it down, start fresh, and ask for the slug function once more:
 

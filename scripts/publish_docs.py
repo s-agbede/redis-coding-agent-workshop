@@ -23,7 +23,7 @@ AGENT_ANCHORS = {
     'handle': 'def handle(',
     'capture': '# Section 3: record',
     'recall': '# Section 4: search',
-    'playbook': '# Section 5: the team',
+    'playbook': "# Section 5: the team's procedure and approved answers, but only",
     'request': '# Build the request',
     'answer': '# Section 3 again',
 }

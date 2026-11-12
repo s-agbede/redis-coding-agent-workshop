@@ -7,13 +7,13 @@
 `/memories` now shows what Redis Agent Memory extracted from the conversation, each with a type and a short ID:
 
 - `coding_preference`: "Prefers Google-style docstrings."
-- `semantic` and `episodic`: general facts and events, such as "The assistant provided a function that converts a title into a URL slug."
+- Other types may appear, such as `semantic`, `episodic`, or a store-specific `user_preference`. The exact set depends on the store and what extraction found.
 
-- The fixture preference, as "Uses [REDACTED] as the sample address in test fixtures." The email detector removed the address before the memory was stored.
+- If the email detector is enabled with the redact action, an extracted fixture preference should hide the address. If that detector is off, the synthetic address may remain unchanged, as it did in the managed rehearsal. A missing fixture memory alone does not prove redaction.
 
-Nobody wrote these down. The `coding_preference` one came from the store's custom type; the built-in types catch everything else, including things the assistant did.
+Nobody wrote these down. The `coding_preference` one came from the store's custom type; other types can include facts about what the assistant did. Extraction need not produce a memory for every message.
 
-Now run `/events`: the session still has the email, word for word. Exclusions protect **long-term** memory; session memory keeps the raw messages until it expires (a day on this store). Don't capture what you couldn't keep for a day.
+Now run `/events`: the session still has the email, word for word. Configured exclusions apply to **long-term** memory; session memory keeps the raw messages until it expires (a day on this store). Don't capture what you couldn't keep for a day.
 
 ## Demo: retrieval, only what fits
 
@@ -22,7 +22,7 @@ In `agent.py:flags`, set `RECALL = True`. That turns on `agent.py:recall`, which
 ```python
 if RECALL:
     found = services.memory.search_long_term_memory(request={
-        "text": task,
+        "query": task,
         "filter_": {"owner_id": {"eq": session.owner}, "memory_type": {"eq": "coding_preference"}},
         "limit": 5,
     })
@@ -56,13 +56,13 @@ Suppose you go off Google-style docstrings. With `AGENTS.md` you had to remember
 Actually, I've switched to NumPy-style docstrings.
 ```
 
-Give extraction a minute, then `/memories`: still **one** docstring memory, same ID, now "Prefers NumPy-style docstrings." Extraction compares what you said with what it already knows about you, and updates the old memory instead of keeping two that disagree.
+Give extraction a minute, then `/memories`: still **one `coding_preference`** for docstrings, same ID, now "Prefers NumPy-style docstrings." Extraction compares what you said with what it already knows about you, and updates the old memory instead of keeping two that disagree.
 
-To drop it altogether, open the **Agent Memory** panel's **Long-term memories** tab and press **Forget** next to the preference (or run `/forget <id>` with the ID from `/memories`). Ask for the de-duplication function again: the terminal says *Recalled: nothing*.
+To drop it altogether, open the **Agent Memory** panel's **Long-term memories** tab and press **Forget** next to the preference (or run `/forget <id>` with the ID from `/memories`). Run `/new-session`, then ask for the de-duplication function again. The forgotten preference should be absent from *Recalled:* and `/view-context`. You see *Recalled: nothing* only if no other coding preferences remain. Starting fresh also removes the preference from conversation history.
 
 Forgetting is per person and immediate, and the store's retention settings expire old memories without anyone remembering to. That's the lifecycle job.
 
-One catch: extraction runs about a minute after each message, on that minute's messages. If you forget a preference while a run is still pending, that run can learn it again. Before pressing **Forget**, open the session in the panel's **Sessions** tab (or run `/events`) and wait for *Extraction: up to date*. Forgetting removes what was learned, not the conversation: the session itself is kept until it expires (a day here).
+One catch: extraction runs about a minute after each message, on that minute's messages. If you forget a preference while a run is still pending, that run can learn it again. Before pressing **Forget**, stop adding messages and wait until `/memories` shows the corrected preference. On GA, the service does not expose a per-session extraction bookmark; the panel and `/events` say so. Older services may show *Extraction: up to date*. Forgetting removes what was learned, not the conversation: the session itself is kept until it expires (a day here).
 
 ## Your turn (4 minutes)
 
@@ -84,7 +84,7 @@ uv run --group iris python main.py
 /memories
 ```
 
-**Look for:** your docstring preference as a `coding_preference`, the fixture one with `[REDACTED]`, and the built-in `semantic` and `episodic` memories.
+**Look for:** your docstring preference as a `coding_preference`. Other types and the fixture memory are conditional. Check the synthetic address against the actual detector settings; do not assume it was redacted.
 
 **3.** Ask for something new, then look at what was sent:
 
@@ -110,9 +110,9 @@ Actually, I've switched to NumPy-style docstrings.
 
 **Look for:** the same memory, updated.
 
-**5.** Run `/events` and wait for *Extraction: up to date*. Then forget the preference in the **Agent Memory** panel (**Forget** next to it), and ask for the de-duplication function again. **Look for:** *Recalled: nothing*. Then state the Google-style preference again, so it's there for the last section.
+**5.** Stop sending messages and wait until `/memories` shows the corrected preference. On GA, `/events` cannot report extraction completion. Then forget the `coding_preference` in the **Agent Memory** panel (**Forget** next to it), run `/new-session`, and ask for the de-duplication function again. **Look for:** the deleted preference is absent from *Recalled:* and `/view-context`. Other preferences may still be recalled. Then state the Google-style preference again, so it's there for the last section.
 
-**6.** Ask one more question. Every agent will answer it differently; in the next section the team approves one answer:
+**6. Optional instructor promotion demo.** If the instructor has configured Playbook FAQ extraction from this Memory store, ask the following question. The instructor can review and publish a proposed answer in the next section. Without that setup, skip this step; section 5 uses an existing published FAQ instead:
 
 ```text
 Can I use real customer data in test fixtures?

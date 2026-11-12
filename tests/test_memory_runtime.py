@@ -29,7 +29,7 @@ def test_new_session_reloads_agents_md_and_clears_the_conversation(tmp_path):
 def test_sessions_lists_stored_sessions_and_resume_restores_the_conversation(tmp_path, capsys):
     memory = Mock()
     app = runtime.Workshop(LEARNER, Mock(), memory, None, 'owner', tmp_path, tmp_path / 'out')
-    memory.list_sessions.return_value.items = ['old-session', app.state.session_id]
+    memory.list_sessions.return_value.items = [SimpleNamespace(session_id=s) for s in ['old-session', app.state.session_id]]
     memory.get_session_memory.return_value.model_dump.return_value = {'events': [
         {'role': 'USER', 'actorId': 'owner', 'content': [{'text': 'I like Google-style docstrings.'}]},
         {'role': 'ASSISTANT', 'actorId': 'coding-assistant', 'content': [{'text': 'Noted.'}]},
@@ -37,7 +37,7 @@ def test_sessions_lists_stored_sessions_and_resume_restores_the_conversation(tmp
     app.command('/sessions')
     shown = capsys.readouterr().out
     assert 'old-sess  I like Google-style docstrings.' in shown and '(current)' in shown
-    memory.list_sessions.assert_called_once_with(filter_owner_id='owner')
+    memory.list_sessions.assert_called_once_with(owner_id='owner')
     app.command('/resume old-session')
     assert app.state.session_id == 'old-session'
     assert app.state.history == [
@@ -91,7 +91,7 @@ def test_tools_cannot_edit_or_read_outside_project(tmp_path):
 def test_memories_shows_short_ids_and_forget_deletes_by_id(tmp_path, capsys):
     memory = Mock()
     memory.search_long_term_memory.return_value.model_dump.return_value = {'items': [
-        {'id': 'abc12345full', 'text': 'Prefers Google-style docstrings.', 'memoryType': 'coding_preference'}]}
+        {'memoryId': 'abc12345full', 'text': 'Prefers Google-style docstrings.', 'memoryType': 'coding_preference'}]}
     app = runtime.Workshop(LEARNER, Mock(), memory, None, 'owner', tmp_path, tmp_path / 'out')
     app.command('/memories')
     assert '[abc12345]' in capsys.readouterr().out
@@ -119,7 +119,7 @@ def test_events_explains_a_session_nothing_was_recorded_for(tmp_path, capsys):
 
 def test_resume_names_a_session_that_does_not_exist(tmp_path):
     memory = Mock()
-    memory.list_sessions.return_value.items = ['missing-id']
+    memory.list_sessions.return_value.items = [SimpleNamespace(session_id='missing-id')]
     memory.get_session_memory.side_effect = session_not_found()
     app = runtime.Workshop(LEARNER, Mock(), memory, None, 'owner', tmp_path, tmp_path / 'out')
     with pytest.raises(ValueError, match='No stored session missing-id'):
@@ -128,7 +128,7 @@ def test_resume_names_a_session_that_does_not_exist(tmp_path):
 
 def stored_sessions(memory: Mock, sessions: dict[str, str]) -> None:
     """Agent Memory with these sessions, each holding one user message."""
-    memory.list_sessions.return_value.items = list(sessions)
+    memory.list_sessions.return_value.items = [SimpleNamespace(session_id=s) for s in sessions]
     def session(session_id: str) -> Mock:
         found = Mock()
         found.model_dump.return_value = {'events': [
@@ -198,12 +198,12 @@ def test_the_start_after_a_reset_deletes_the_previous_learners_memories_and_sess
     (output / 'forget.json').write_text('{"owner": "learner-old"}')
     memory = Mock()
     memory.search_long_term_memory.side_effect = [
-        SimpleNamespace(items=[SimpleNamespace(id='m1'), SimpleNamespace(id='m2')]), SimpleNamespace(items=[])]
-    memory.list_sessions.return_value.items = ['s1', 's2', 's3']
+        SimpleNamespace(items=[SimpleNamespace(memory_id='m1'), SimpleNamespace(memory_id='m2')]), SimpleNamespace(items=[])]
+    memory.list_sessions.return_value.items = [SimpleNamespace(session_id=s) for s in ['s1', 's2', 's3']]
     assert runtime.forget_previous_learner(output, memory) == 'Deleted 2 memories and 3 sessions of the previous learner.'
     memory.bulk_delete_long_term_memories.assert_called_once_with(memory_ids=['m1', 'm2'])
     assert memory.search_long_term_memory.call_args.kwargs['request']['filter_'] == {'owner_id': {'eq': 'learner-old'}}
-    memory.list_sessions.assert_called_once_with(filter_owner_id='learner-old')
+    memory.list_sessions.assert_called_once_with(owner_id='learner-old')
     assert [c.kwargs['session_id'] for c in memory.delete_session_memory.call_args_list] == ['s1', 's2', 's3']
     assert not (output / 'forget.json').exists()
     assert runtime.forget_previous_learner(output, memory) is None  # nothing pending
@@ -215,3 +215,10 @@ def test_without_agent_memory_the_reset_note_is_kept_for_later(tmp_path):
     (output / 'forget.json').write_text('{"owner": "learner-old"}')
     assert 'not configured' in runtime.forget_previous_learner(output, None)
     assert (output / 'forget.json').exists()
+
+
+def test_ga_extraction_status_does_not_use_the_removed_preview_property_api():
+    memory = fake_memory_with_bookmark(404)
+    memory.sdk_configuration.globals.store_id = 'st_workshop'
+    assert runtime.extraction_status(memory, 's1', 'e1') == 'not exposed by this service; check /memories'
+    assert memory.requested == []

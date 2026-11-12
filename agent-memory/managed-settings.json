@@ -1,0 +1,66 @@
+{
+  "storeId": "st_e3b09e18b4454130a583a0a892593299",
+  "endpoint": "https://agent-memory.public.jgh1h0nphvutbazo.mgmt-0.aws-use1-1.ultra.redis.io",
+  "verifiedOn": "2026-11-12",
+  "settings": {
+    "name": "coding-agent-workshop",
+    "shortMemory": {
+      "ttlSeconds": 86400
+    },
+    "longTermMemory": {
+      "ttlSeconds": 604800
+    },
+    "extractionCadence": {
+      "activeIntervalSeconds": 60
+    },
+    "summarization": {
+      "enabled": false
+    },
+    "customMemoryTypes": [
+      {
+        "name": "coding_preference",
+        "description": "A preference the user has stated about how they want code written: style, docstrings, naming, testing or tooling.",
+        "fields": [
+          {
+            "name": "topic",
+            "description": "What the preference is about, for example docstrings, naming, testing or tooling.",
+            "type": "str"
+          }
+        ],
+        "extractionStrategy": {
+          "enabled": true,
+          "prompt": "Extract a coding_preference only from what the user says, in their own words, about how they want code written or which conventions and tools they want used, for example \"I like Google-style docstrings\" or \"use pytest, not unittest\". Use only the user's messages. Never infer a preference from code or text the assistant wrote. If the new messages contain nothing the user said about how they want code written, extract nothing. When the user changes a preference, update the existing memory instead of adding a second one. Ignore tasks the user asked for. Write each preference as one short sentence, for example \"Prefers Google-style docstrings.\""
+        }
+      }
+    ],
+    "longTermMemoryExclusions": {
+      "enabled": true,
+      "builtInDetectors": {
+        "enabled": true,
+        "detectors": [
+          {
+            "id": "email",
+            "enabled": true,
+            "action": "redact"
+          }
+        ]
+      },
+      "customDetectors": {
+        "enabled": true,
+        "detectors": [
+          {
+            "name": "api-token",
+            "enabled": true,
+            "action": "drop",
+            "matcher": {
+              "kind": "regex",
+              "regex": {
+                "pattern": "\\b(?:ghp|sk)_[A-Za-z0-9]{16,}"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
